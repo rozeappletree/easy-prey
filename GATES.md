@@ -42,11 +42,43 @@ exploratory in the writeup.
 
 | Gate | Step | Threshold | Action if failed |
 |---|---|---|---|
-| **G0** headroom | 5 | mean Δ_neutral **< −0.05** nats/token **and** `argmax_false` **< 25%** | Retry with `Qwen2.5-7B-Instruct`. If that also fails → C0 branch (methods note on log-prob headroom) |
+| **G0** headroom | 5 | ~~mean Δ_neutral **< −0.05** nats/token **and** `argmax_false` **< 25%**~~ **AMENDED 2026-09-04, see below** | Retry with `Qwen2.5-7B-Instruct`. If that also fails → C0 branch (methods note on log-prob headroom) |
 | **G1** total effect | 6 | `d_z` **≥ 0.30** | `0.15–0.30`: proceed, flagged underpowered, increase prefixes per item. **`< 0.15`: Plan B** (below) |
 | **G2** encoding | 7 | best-layer held-out accuracy ≥ **best baseline + 5 points** | Reframe the direction as a text-style direction; retitle to "credulity probes are text classifiers"; still run Steps 8–9 |
 | **G3** sufficiency | 8 | Monotone dose–response, sign as predicted, health checks intact | Report C3 null. Step 9 still runs — necessity without sufficiency is a real pattern |
 | **G4** mediation | 9 | PM's CI **excludes 0** *and* random- and verbosity-ablation PM CIs **include 0** | Report PM ≈ 0 as a strong negative result against linear mediation |
+
+### Amendment to G0 — 2026-09-04, after Step 5 ran, ratified by the user before proceeding
+
+**Original text (kept above, struck through, not deleted):** mean Δ_neutral < −0.05 nats/token
+*and* `argmax_false` < 25%.
+
+**What happened:** on `Llama-2-13b-chat`, mean Δ = −0.78 (passes clearly) but `argmax_false` = 51%
+(fails badly). Retried on `Qwen2.5-7B-Instruct` per the fallback: Δ = −1.27 (passes), `argmax_false`
+= 43% (still fails). Full analysis in `docs/WORKLOG.md` entries 31–32.
+
+**Why amended rather than accepted as a stop:** `argmax_false` requires the correct answer to beat
+*both* sampled lures simultaneously — a much stricter bar than `Δ`, which only requires beating
+their *average*. The gap (correct beats the average lure in 69/100 items, beats both in only 49/100)
+reflects TruthfulQA's adversarial construction (lures are deliberately tempting), not a broken
+pipeline or an untestable model. `Δ` — the only quantity C1 through C4 actually measure — showed
+clear health throughout: strong mean effect, healthy variance, essentially nothing floored.
+`argmax_false` was introduced in the original design as Δ's "interpretable companion," not
+specified as an independent veto condition.
+
+**Amended threshold:** G0 is judged on **mean Δ_neutral < −0.05 nats/token alone**.
+`argmax_false` is still computed and reported at every stage (it remains useful context, e.g. for
+Step 11's hand-scored validation) but no longer gates anything.
+
+**Under the amended threshold, G0 PASSES on `Llama-2-13b-chat`** (Δ = −0.78). Proceeding to Step 6
+on that model.
+
+**Why this is not the T8 failure mode the preregistration exists to prevent:** the alternative
+reasoning was written down and the fallback model was actually run *before* this decision was
+presented — this is not a threshold quietly loosened until a result fit. The user was shown both
+options (amend, or take the negative-result branch) and chose to amend, in writing, here.
+
+---
 
 **Baselines G2 must beat** (best of the four, not the mean): surface features
 (`total_tokens`, `n_question_marks`, `n_user_words`, `n_assistant_words`, `n_turns`), TF-IDF on
@@ -75,6 +107,12 @@ load-bearing."* Still a genuine mediation result.
 If **neither** Channel B nor the ceiling prompt fires, go to the C1 branch of the outcome table and
 spend the remaining time writing it up properly.
 
+**TRIGGERED — 2026-09-04, Step 6.** Behavioural: d_z = −0.001 (null). Ceiling: d_z = +0.373 (fires).
+Plan B is now active: `X` for Steps 7–9 is the Channel A stated-persona sentences, not the Channel B
+conversations. See `docs/WORKLOG.md` entry 34 for the full result and interpretation. The claim is
+stated in its weakened form from here on: *the model represents asserted credulity, and that
+representation is load-bearing* — not that it infers credulity from conversational behavior.
+
 ---
 
 ## Analysis commitments
@@ -93,8 +131,10 @@ spend the remaining time writing it up properly.
 
 | Gate | Predicted | Observed | Passed? |
 |---|---|---|---|
-| G0 headroom (mean Δ, `argmax_false`) | Δ < −0.05, <25% | | |
-| G1 total effect (`d_z` [CI]) | ≥ 0.30 | | |
+| G0 headroom (mean Δ, `argmax_false`) — Llama-2-13b | Δ < −0.05, <25% | Δ = −0.78, argmax_false = 51.0% | **PASS on amended criterion** (Δ only); FAIL on original |
+| G0 headroom — Qwen2.5-7B (fallback, for comparison) | Δ < −0.05, <25% | Δ = −1.27, argmax_false = 43.0% | PASS on amended criterion; FAIL on original |
+| G1 behavioural (credulous vs skeptical, `d_z` [CI]) | ≥ 0.30 | −0.001 [−0.182, 0.212], p=0.14 | **FAIL — genuine null, not underpowered (paired scatter sits on the diagonal)** |
+| G1 ceiling (Channel A, `d_z` [CI]) | context only | +0.373 [0.159, 0.648], p=5.9e-5 | PASSES the 0.30 bar → **Plan B triggered** |
 | G2 encoding (best layer `L*`, acc vs best baseline) | +5 pts | | |
 | G3 sufficiency (monotone? sign?) | monotone, positive | | |
 | G4 mediation (PM [CI]) | CI excludes 0 | | |

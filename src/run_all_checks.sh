@@ -34,5 +34,6 @@ run toy_run_stats.txt       "$PY" src/toy_run_stats.py
 run build_items.txt         "$PY" src/build_items.py
 run prefix_qc_selfcheck.txt "$PY" src/prefix_qc.py
 run test_scoring.txt        "$PY" src/test_scoring.py
+run test_scoring_llama2.txt "$PY" src/test_scoring.py --model NousResearch/Llama-2-13b-chat-hf --dtype bfloat16
 run persona_check.txt       "$PY" src/check_persona_templates.py data/persona_templates_for_T3_human_augmented.json
 echo "Done."

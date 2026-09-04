@@ -30,6 +30,8 @@ bash src/run_all_checks.sh
 | [`../outputs/generate_topup.txt`](../outputs/generate_topup.txt) | `src/generate_prefixes.py` | 27 |
 | [`../outputs/merge_topup.txt`](../outputs/merge_topup.txt) | `src/merge_topup.py` | 27 |
 | [`../outputs/persona_check.txt`](../outputs/persona_check.txt) | `src/check_persona_templates.py` | 29 |
+| [`../outputs/test_scoring_llama2.txt`](../outputs/test_scoring_llama2.txt) | `src/test_scoring.py` (bf16, real model) | 30 |
+| [`../outputs/figure1_c1_paired_scatter.png`](../outputs/figure1_c1_paired_scatter.png) | `src/c1_total_effect.py` | 34 |
 
 Each file carries a header recording the command and the UTC timestamp, so a stale artifact is
 obvious at a glance.
@@ -664,6 +666,205 @@ obvious at a glance.
   by eye from scratch — and if a new drift phrase is found, add it to `DRIFT_PHRASES` so the next
   review benefits from this one.
 
+### 30. Re-ran Step 4's correctness suite against the real subject model — 2 failures, both benign, tolerances fixed with measurement
+
+- **What:** `test_scoring.py` had only ever run against the tiny fp32 debug model. Added
+  `--model`/`--dtype` flags and ran it against the actual subject model and precision:
+  `NousResearch/Llama-2-13b-chat-hf`, bf16.
+- **Found — 5/7 passed immediately, 2 failed:**
+  ```
+  FAIL  2. padding invariance:        1.45e-02  (fp32 threshold: 2e-03)
+  FAIL  6. causal invariance:         2.50e-01 absolute  (fp32 threshold: 1e-03)
+  ```
+- **Reasoning — investigated rather than either dismissing or panicking.** Test 6's failure looked
+  alarming in absolute terms, but the residual stream's scale grows enormously across 40 layers
+  (measured: norm ≈0.9 at layer 0, ≈106 at layer 39). Recomputed as **relative** error, layer by
+  layer:
+  ```
+  layer   norm(a)   norm(b)   relative diff
+      0      0.90      0.90        0.00000
+      1      2.13      2.14        0.00209
+      5      8.81      8.80        0.00648
+     10     15.35     15.35        0.01148
+     20     43.05     42.99        0.01467
+     30     70.31     70.22        0.01948
+     39    106.59    106.22        0.02371
+  ```
+  **Exactly zero at the embedding layer, then a smooth, monotonic ramp to 2.4% by the output.**
+  That signature — zero start, gentle compounding — is what accumulated bf16 rounding across 40
+  layers looks like (different total sequence lengths select different matmul tiling on GPU,
+  producing tiny floating-point differences that compound through each residual addition). A real
+  causality violation (the "full" prompt's unrelated question content leaking backward into the
+  reading) would show up immediately and unevenly, not as a clean ramp starting at exactly 0. Test
+  2's 1.45e-2 against log-probs of magnitude ~2–3 is the same story at ~0.6% relative.
+- **Conclusion:** the original tolerances (1e-3, 2e-3) were calibrated on the 24-layer fp32 debug
+  model and were never going to survive 40 layers of bf16 — that was a gap in the test, not a bug
+  in the code. Fixed properly, not just loosened:
+  - Test 6 now measures **relative** error (normalized by residual norm per layer) instead of
+    absolute — correct regardless of how large the residual stream gets.
+  - Both tests take a `tol` parameter; `main()` passes fp32's original tight values by default and
+    measured-with-margin bf16 values (3e-2, 5e-2 — roughly 2x the observed 1.45e-2 and 2.04e-2)
+    when `--dtype bfloat16` is passed.
+  - Re-ran both suites: **7/7 on the fp32 debug model (no regression)**, **7/7 on bf16
+    Llama-2-13b** with the real numbers now visible in each PASS line rather than hidden behind a
+    fixed threshold.
+- **Why this matters for the design, not just the code:** test 6 is the one backing the claim that
+  activation extraction costs ~360 forward passes instead of ~36,000 (entry 22). A 2.4% relative
+  drift at the *final* layer is a mild caution for that shortcut specifically at the deepest
+  layers — probing is expected to peak around layers 20–29 (DESIGN.md), where the measured drift is
+  ~1.5%, comfortably below the credulity signal probes are expected to find. This is exactly what
+  Step 7's already-planned position-transfer check (re-extracting at the full-prompt position for a
+  5-item subsample) exists to catch if it turns out to matter more than this estimate suggests —
+  this finding makes that check feel earned rather than precautionary.
+- **Next step:** none — Step 4 is now fully validated on the real model, at the real precision.
+  Proceed to Step 5 (C0 headroom).
+
+### 31. Step 5 = C0: the first real experiment, and the first gate failure
+
+- **What:** Ran `src/c0_headroom.py` against `Llama-2-13b-chat`, bf16 — no prefix, no persona, just
+  the bare question. 100 high-stakes items, plus the 30 low-stakes items as a bonus comparison.
+- **Found:**
+  ```
+  Delta (mean, vs the 2 sampled lures):   -0.78 nats   (G0 threshold: < -0.05 -- PASSES clearly)
+  argmax_false (vs the 2 sampled lures):   51.0%        (G0 threshold: < 25%   -- FAILS)
+  argmax_false (vs ALL listed lures):      57.0%        (context only, not gated)
+  ```
+- **First checked whether this was a bug, not a finding.** `argmax_false` was originally
+  implemented against *every* incorrect answer TruthfulQA lists for an item (up to 11), while
+  `Delta` — and every downstream C1–C4 experiment — only ever compares against the 2 *sampled*
+  lures. That mismatch was a real ambiguity in the design docs (the original spec introduces
+  `argmax_false` as Δ's "interpretable" companion without pinning down its candidate set).
+  Recomputed the metric restricted to the same 2 lures Δ uses: **51.0%**, not meaningfully
+  different from the all-candidates 57.0%. The correction changed the number, not the verdict —
+  worth doing for honesty, not because it rescued the gate.
+- **Explained the divergence, and it's a real property of the model, not an artifact:** correct
+  beats the *average* of the 2 lures in 69/100 items (why mean Delta looks healthy) but beats the
+  *harder* of the two specific lures in only 49/100 (why argmax_false sits near chance). The model
+  has a real, measurable pull toward truth on average, but is close to a coin flip on the strict
+  "which single answer is most likely" criterion — TruthfulQA's adversarial construction (lures
+  written specifically to be tempting) makes this a known, documented pattern in the literature,
+  not specific to this pipeline.
+- **The interpretive question, left open rather than resolved unilaterally:** a near-50% flip rate
+  is arguably not "no headroom" in the sense that matters for the actual DV. Delta is continuous
+  and shows healthy variance (sd 1.94, range −10.9 to +3.9, only 1/100 items near a floor) — the
+  headroom for detecting a credulous-vs-skeptical *shift* in Delta does not obviously depend on
+  argmax_false being low. A binary measure sitting near 50%, rather than pinned at 0% or 100%, is
+  arguably the point of *maximum* sensitivity to a manipulation, not evidence of saturation.
+  **This is exactly the kind of reasoning that must not be used to unilaterally wave through a
+  failing preregistered gate** — it is offered here as an observation for the user to weigh, not as
+  a justification for overriding `GATES.md` after seeing the number. That would be the T8 failure
+  mode (a threshold renegotiated once it's inconvenient) the preregistration exists to prevent,
+  regardless of how sound the argument feels in the moment.
+- **Conclusion:** Gate G0 **FAILS as preregistered**, unambiguously, under both candidate-set
+  readings. Per `GATES.md`'s own specified fallback for a G0 failure, retrying with a smaller model
+  is a mechanical next step, not a new judgment call — executed without waiting, downloading and
+  running `Qwen2.5-7B-Instruct` next.
+- **Next step:** compare Qwen2.5-7B's C0 numbers against Llama-2-13b's. If 7B also fails on
+  `argmax_false`, this stops being executable without the user: either accept the interpretive
+  argument above (and, if so, the preregistration should be *amended with a dated note*, not
+  silently reinterpreted) or take the `GATES.md` G0-failure branch — a methods note on log-prob
+  headroom, which is itself a real, publishable result.
+
+### 32. Fallback also fails — G0 is a genuine stop, escalated to the user rather than resolved alone
+
+- **What:** Ran the same C0 test against `Qwen2.5-7B-Instruct` per `GATES.md`'s preregistered
+  fallback for a G0 failure.
+- **Found:**
+  ```
+                    Llama-2-13b      Qwen2.5-7B
+  mean Delta          -0.78            -1.27      (both comfortably pass the -0.05 threshold)
+  argmax_false         51.0%           43.0%      (both fail the 25% threshold, by a wide margin)
+  ```
+  7B's Delta is *more* negative (stronger average truth-preference) but its argmax_false is only
+  modestly better. Both models show the identical qualitative pattern from entry 31: healthy
+  average preference for truth, near-chance performance on the single hardest lure. Trying a larger
+  model next is unlikely to help — TruthfulQA's adversarial construction is documented to produce
+  exactly this pattern, and larger models are reported in the literature to sometimes do *worse* on
+  it, not better, since they have learned the common misconceptions more thoroughly.
+- **Reasoning for stopping here rather than picking a path alone:** `GATES.md`'s own text for a G0
+  failure after the fallback is "go to the C0 branch" — but entry 31 already surfaced a genuine
+  interpretive question (whether `argmax_false` should have independent veto power over a gate when
+  `Delta`, the DV every later experiment actually measures, shows clear health). Resolving that
+  question now, after seeing that it determines whether the next 10+ hours proceed as planned or
+  pivot to a negative-result writeup, is precisely the moment self-serving reasoning is least
+  trustworthy — however sound the argument feels. This is presented to the user as a decision, not
+  executed as one.
+- **Next step:** awaiting the user's choice between amending `GATES.md`'s G0 definition (with a
+  dated note, not a silent change) to gate on Delta alone, or taking the preregistered negative-
+  result branch. Either is a real, defensible outcome — this is not a project-ending failure either
+  way, only a fork in what the next hours are spent proving.
+
+### 33. G0 amended and ratified — proceeding to Step 6 on Llama-2-13b
+
+- **What:** Presented entry 32's fork to the user directly (amend the gate vs. take the
+  negative-result branch vs. try a third model). Chose: **amend**.
+- **Conclusion:** `GATES.md` now carries the amendment inline — original threshold struck through
+  and kept visible, not deleted; the reasoning, the actual numbers from both models, and an explicit
+  note on why this doesn't recreate the T8 failure mode (the fallback model was run and the
+  reasoning written down *before* presenting the choice, not after quietly picking the convenient
+  answer). The results table is filled in for both models, honestly showing FAIL under the original
+  wording and PASS under the amended one.
+- **Effective state:** **G0 passes on `Llama-2-13b-chat`** (Δ = −0.78 < −0.05). The subject model
+  choice from entry 4 is unchanged — Llama-2-13b remains cross-family from the generator and was
+  never in question; only the gate's own definition moved.
+- **Next step:** Step 6 (C1) — total effect. First time credulous/skeptical/neutral prefixes are
+  actually tested against the model.
+
+### 34. Step 6 = C1: the primary manipulation is a genuine null; Plan B triggers exactly as pre-written
+
+- **What:** Ran `src/c1_total_effect.py`: behavioural condition (100 items × 3 classes × 6 sampled
+  matched prefixes, 1,800 forward passes) and the ceiling condition (100 items × 24 stated-persona
+  sentences, 2,400 passes). **7.4 minutes total** — another confirmation that inference compute is
+  not the constraint on this project (generation was; scoring is fast).
+- **Found — behavioural, the primary preregistered contrast (P1):**
+  ```
+  credulous -0.4077 | neutral -0.3861 | skeptical -0.4075
+  d_z = -0.001   95% CI [-0.182, +0.212]   Wilcoxon p = 0.14
+  ```
+  **Genuinely null, not merely underpowered.** The paired scatter (Figure 1) shows points sitting
+  almost exactly on the y=x diagonal across the full range (-4 to +4) — the item itself (how
+  tempting its specific lure is) drives Δ almost entirely; the persona of the preceding conversation
+  contributes essentially nothing detectable. This is the "look at the scatter before the p-value"
+  check from `GATES.md` actually mattering: a p=0.14 with a tight/biased scatter could still be a
+  real small effect obscured by noise, but this scatter shows agreement, not noise around a
+  difference.
+- **Found — ceiling condition (Channel A, context):**
+  ```
+  credulous -0.5970 | skeptical -0.6868
+  d_z = +0.373   95% CI [0.159, 0.648]   Wilcoxon p = 5.9e-5
+  ```
+  Clears the 0.30 gate threshold cleanly.
+- **Interpretation, and why this is a finding rather than a failure:** Gate A (entry 26) confirmed
+  the behavioural prefixes separate credulous/skeptical *textually* very strongly (verification acts
+  3.34 vs 0.09 per convo). That separation produces **no** detectable shift in how the model answers
+  a completely unrelated question afterward — while an *explicit, stated* instruction about the
+  user's credulity does. This exact outcome — "G1 fails, ceiling fires" — is a **named branch in the
+  original preregistered outcome table** (`PLAN_TECHNICAL.md`): *"Responds to stated but not
+  inferred credulity — a real dissociation; Plan B still yields mediation."* The experiment
+  discriminated cleanly between two real hypotheses; it did not fail to produce evidence.
+- **One loose end, deliberately not over-interpreted:** the ordering is `neutral < credulous ≈
+  skeptical` rather than the clean `skeptical < neutral < credulous` DESIGN.md describes as the
+  ideal case. All three means differ by ≤0.02 nats — well inside the CI on the primary contrast, and
+  smaller than any plausible measurement floor here. Concluding anything about neutral-prefix
+  miscalibration from a 0.02-nat gap between three statistically indistinguishable numbers would be
+  reading tea leaves. Noted, not chased.
+- **Conclusion — Plan B triggers, executed as pre-written, not as a fresh decision.** `GATES.md`'s
+  Plan B clause is now marked triggered with today's date and the actual numbers. **From Step 7
+  onward, `X` is the Channel A stated-persona sentences, not Channel B conversations.** The claim is
+  restated in its preregistered weakened form: *the model represents asserted credulity, and that
+  representation is load-bearing* — not that it infers credulity from behavior and acts on it. This
+  is not a project-ending outcome; it is the specific claim the remaining budget now proves or
+  disproves.
+- **Engineering note, carried forward rather than fixed retroactively:** `c1_total_effect.py` has no
+  internal progress logging and no checkpointing — a real gap against this project's own stated
+  policy (`PLAN_TECHNICAL.md` Step 4: run as scripts with JSONL checkpointing, resume-on-restart).
+  Tolerable here (a 7-minute run); not tolerable for Steps 8–9 (8,000–9,000 passes each). Fixing
+  both — progress prints and incremental checkpointing — before building those.
+- **Next step:** Step 7 (C2, encoding) rebuilt around Channel A as `X`. The cross-channel transfer
+  test loses its original purpose (there is no longer a second, independent channel to transfer
+  *to* — Channel A **is** the primary channel now) and should be reframed or dropped; note this
+  explicitly rather than silently running a test that no longer means what it used to.
+
 ---
 
 ## Standing decisions (change these only with a dated note)
@@ -688,12 +889,21 @@ obvious at a glance.
    *(entries 24, 26)*
 5. ~~Write the 24 Channel-A stated-persona templates~~ — done by the user, reviewed, two fixes
    applied. *(entry 28)*
-6. **Merge the top-up batch into the main prefix set** and confirm Gate B clears 100/class.
-   *(entry 27, in progress)*
-7. **Re-run `test_scoring.py` against Llama-2-13b** before Step 5 — the hand-supplied template makes
-   tests 4 and 6 the ones that could fail there. *(entry 22)*
-8. **Wire `persona_templates_for_T3_human_augmented.json` into the Step 6 ceiling condition and
+6. ~~Merge the top-up batch~~ — done, 137/class matched, clears the 100/class target.
+   *(entry 27b)*
+7. ~~Re-run `test_scoring.py` against Llama-2-13b~~ — done, 7/7 with measured bf16 tolerances.
+   *(entry 30)*
+8. **Run Step 5 (C0 headroom)** — the first real experiment. Gate G0 in `GATES.md`.
+9. **Wire `persona_templates_for_T3_human_augmented.json` into the Step 6 ceiling condition and
    Step 7 cross-channel transfer** once those steps are built. *(entry 28)*
+10. ~~Run Step 5 (C0 headroom)~~ — done; gate amended and ratified. *(entries 31-33)*
+11. ~~Run Step 6 (C1 total effect)~~ — done. Behavioural null, ceiling fires, **Plan B
+    triggered**. *(entry 34)*
+12. **Rebuild Step 7 (C2 encoding) around Channel A as the manipulation.** Reframe or drop the
+    cross-channel transfer test (T3 defense) — its premise (a second independent channel) no longer
+    holds now that Channel A is primary. *(entry 34)*
+13. **Add progress logging + JSONL checkpointing** before building Steps 8–9 (C3, C4) — they're
+    10-15x larger than C1 and currently have no resume path if interrupted.
 
 ## Things that could reasonably be revisited
 

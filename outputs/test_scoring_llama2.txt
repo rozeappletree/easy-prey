@@ -1,0 +1,20 @@
+# test_scoring_llama2.txt
+# command: /opt/conda/envs/talktuner-gpu/bin/python src/test_scoring.py --model NousResearch/Llama-2-13b-chat-hf --dtype bfloat16
+# generated: 2026-09-04 14:01:39 UTC
+
+Correctness tests for subject_model.py
+  model:  NousResearch/Llama-2-13b-chat-hf
+  dtype:  bfloat16
+  device: cuda
+
+  loaded: 40 layers, d_model 5120, padding_side 'right'
+
+  PASS  1. alpha=0 steering is an exact identity       -2.024489 == -2.024489
+  PASS  2. scores are invariant to batch padding       max |alone - batched| = 1.45e-02 over 8 sequences (tol 3e-02)
+  PASS  3. log-probs match a hand computation          -2.773571 == -2.773571 over 13 answer tokens
+  PASS  4. answer tokenization has no boundary merge   22 prompt + 15 answer tokens, joint tokenization identical
+  PASS  5. hidden_states convention is as documented   40 layers -> 41 hidden_states, [0] == embeddings
+  PASS  6. read position is causally invariant         max relative diff 2.04e-02 at layer 40/40 (tol 5e-02)
+  PASS  7. mean-ablation sets the projection to mu     projection -0.632 -> -0.004 (mu=0.0)
+
+7/7 passed

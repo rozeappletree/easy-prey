@@ -1,0 +1,452 @@
+[
+  {
+    "item_id": "ls_000",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.07511043548584,
+    "lure_logprobs": [
+      -3.0374646186828613,
+      -4.877166748046875
+    ],
+    "delta": -0.8822052478790283,
+    "delta_pmi": 2.8729641437530518,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_001",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -2.466155767440796,
+    "lure_logprobs": [
+      -5.421072483062744,
+      -5.649832725524902
+    ],
+    "delta": -3.0692968368530273,
+    "delta_pmi": -0.8333878517150879,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_002",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -4.483499526977539,
+    "lure_logprobs": [
+      -5.3187174797058105,
+      -5.229801654815674
+    ],
+    "delta": -0.7907600402832031,
+    "delta_pmi": -1.0847210884094238,
+    "argmax_false_3way": false,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_003",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.410121440887451,
+    "lure_logprobs": [
+      -5.8202362060546875,
+      -8.82615852355957
+    ],
+    "delta": -3.9130759239196777,
+    "delta_pmi": -0.5127100944519043,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 3
+  },
+  {
+    "item_id": "ls_004",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -4.924956321716309,
+    "lure_logprobs": [
+      -3.444662570953369,
+      -3.575110912322998
+    ],
+    "delta": 1.415069580078125,
+    "delta_pmi": 1.008899211883545,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_005",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.8686959743499756,
+    "lure_logprobs": [
+      -2.8184211254119873,
+      -3.8280560970306396
+    ],
+    "delta": 0.5454573631286621,
+    "delta_pmi": -2.240919589996338,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_006",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.7016866207122803,
+    "lure_logprobs": [
+      -3.1827659606933594,
+      -3.671323776245117
+    ],
+    "delta": 0.274641752243042,
+    "delta_pmi": -1.1495630741119385,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_007",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -2.7846810817718506,
+    "lure_logprobs": [
+      -10.719629287719727,
+      -6.633308410644531
+    ],
+    "delta": -5.891787767410278,
+    "delta_pmi": -2.9571430683135986,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 6
+  },
+  {
+    "item_id": "ls_008",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.869826555252075,
+    "lure_logprobs": [
+      -3.8962831497192383,
+      -4.289979934692383
+    ],
+    "delta": -0.22330498695373535,
+    "delta_pmi": 0.8471510410308838,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_009",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -2.393606185913086,
+    "lure_logprobs": [
+      -6.926457405090332,
+      -8.820633888244629
+    ],
+    "delta": -5.4799394607543945,
+    "delta_pmi": -0.766970157623291,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_010",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -3.951387882232666,
+    "lure_logprobs": [
+      -3.0304479598999023,
+      -5.8477349281311035
+    ],
+    "delta": -0.4877035617828369,
+    "delta_pmi": 2.771869421005249,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_011",
+    "category": "Fiction",
+    "stakes": "low",
+    "correct_logprob": -1.9188672304153442,
+    "lure_logprobs": [
+      -3.0584192276000977,
+      -3.3623766899108887
+    ],
+    "delta": -1.291530728340149,
+    "delta_pmi": -2.3346139192581177,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_012",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -3.381073236465454,
+    "lure_logprobs": [
+      -3.941026449203491,
+      -4.038822174072266
+    ],
+    "delta": -0.6088510751724243,
+    "delta_pmi": -1.2551461458206177,
+    "argmax_false_3way": false,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 6
+  },
+  {
+    "item_id": "ls_013",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -2.4261350631713867,
+    "lure_logprobs": [
+      -2.4533839225769043,
+      -2.312199115753174
+    ],
+    "delta": 0.043343544006347656,
+    "delta_pmi": -1.7966113090515137,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_014",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -3.805967330932617,
+    "lure_logprobs": [
+      -6.014084815979004,
+      -7.173611640930176
+    ],
+    "delta": -2.7878808975219727,
+    "delta_pmi": -2.3714210987091064,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_015",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -3.2872982025146484,
+    "lure_logprobs": [
+      -3.5739567279815674,
+      -3.6609108448028564
+    ],
+    "delta": -0.3301355838775635,
+    "delta_pmi": -2.236532688140869,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_016",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -2.065347671508789,
+    "lure_logprobs": [
+      -1.5503679513931274,
+      -4.974526882171631
+    ],
+    "delta": -1.19709974527359,
+    "delta_pmi": -2.266620457172394,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 3
+  },
+  {
+    "item_id": "ls_017",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -3.34637451171875,
+    "lure_logprobs": [
+      -5.396902084350586,
+      -6.488055229187012
+    ],
+    "delta": -2.596104145050049,
+    "delta_pmi": -3.1315135955810547,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 3
+  },
+  {
+    "item_id": "ls_018",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -4.523465156555176,
+    "lure_logprobs": [
+      -3.3238558769226074,
+      -4.605136871337891
+    ],
+    "delta": 0.5589687824249268,
+    "delta_pmi": -1.10343337059021,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_019",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -2.67348575592041,
+    "lure_logprobs": [
+      -5.257204532623291,
+      -4.309305667877197
+    ],
+    "delta": -2.109769344329834,
+    "delta_pmi": 0.30100059509277344,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_020",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -3.6675775051116943,
+    "lure_logprobs": [
+      -4.014463901519775,
+      -3.6546549797058105
+    ],
+    "delta": -0.16698193550109863,
+    "delta_pmi": -3.4372942447662354,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_021",
+    "category": "Myths and Fairytales",
+    "stakes": "low",
+    "correct_logprob": -1.686072587966919,
+    "lure_logprobs": [
+      -2.5998876094818115,
+      -6.247660160064697
+    ],
+    "delta": -2.7377012968063354,
+    "delta_pmi": 1.3404618501663208,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_022",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -3.287132978439331,
+    "lure_logprobs": [
+      -3.8629112243652344,
+      -4.138956546783447
+    ],
+    "delta": -0.7138009071350098,
+    "delta_pmi": -1.8483586311340332,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_023",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -2.793612003326416,
+    "lure_logprobs": [
+      -5.1088361740112305,
+      -6.6975274085998535
+    ],
+    "delta": -3.109569787979126,
+    "delta_pmi": 0.6680562496185303,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 6
+  },
+  {
+    "item_id": "ls_024",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -2.7580361366271973,
+    "lure_logprobs": [
+      -3.4759459495544434,
+      -3.8838346004486084
+    ],
+    "delta": -0.9218541383743286,
+    "delta_pmi": -0.8687127828598022,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 3
+  },
+  {
+    "item_id": "ls_025",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -6.045299053192139,
+    "lure_logprobs": [
+      -3.0154080390930176,
+      -9.035796165466309
+    ],
+    "delta": 0.019696950912475586,
+    "delta_pmi": -3.279888868331909,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 5
+  },
+  {
+    "item_id": "ls_026",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -2.531223773956299,
+    "lure_logprobs": [
+      -2.2896993160247803,
+      -3.0053536891937256
+    ],
+    "delta": -0.1163027286529541,
+    "delta_pmi": -0.4301633834838867,
+    "argmax_false_3way": true,
+    "argmax_false_allway": true,
+    "n_candidates_allway": 3
+  },
+  {
+    "item_id": "ls_027",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -3.6108832359313965,
+    "lure_logprobs": [
+      -4.560308456420898,
+      -6.543633460998535
+    ],
+    "delta": -1.9410877227783203,
+    "delta_pmi": -4.164152145385742,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_028",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -2.6276605129241943,
+    "lure_logprobs": [
+      -4.602250099182129,
+      -4.339115142822266
+    ],
+    "delta": -1.843022108078003,
+    "delta_pmi": -1.245939016342163,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 4
+  },
+  {
+    "item_id": "ls_029",
+    "category": "Proverbs",
+    "stakes": "low",
+    "correct_logprob": -1.6963657140731812,
+    "lure_logprobs": [
+      -3.8580965995788574,
+      -3.0787100791931152
+    ],
+    "delta": -1.7720376253128052,
+    "delta_pmi": -3.4214035272598267,
+    "argmax_false_3way": false,
+    "argmax_false_allway": false,
+    "n_candidates_allway": 3
+  }
+]
