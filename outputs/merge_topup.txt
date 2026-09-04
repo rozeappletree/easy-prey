@@ -1,0 +1,19 @@
+main batch:  480 (from the original 480-conversation run)
+top-up:      300 (seed 1, +100/class)
+merged:      780 total, 0 duplicate raw_text (should be 0)
+usable:      746/780 (95.6%)
+
+Markers by class (post-merge)
+  credulous  {"n": 236, "user_words_per_turn": 12.9, "asst_words_per_turn": 19.4, "verification_acts_per_convo": 0.09, "acceptance_acts_per_convo": 2.63, "q_marks_per_user_turn": 0.59, "toy_evidence_per_user_turn": 0.0}
+  neutral    {"n": 253, "user_words_per_turn": 11.4, "asst_words_per_turn": 19.5, "verification_acts_per_convo": 0.06, "acceptance_acts_per_convo": 0.03, "q_marks_per_user_turn": 0.9, "toy_evidence_per_user_turn": 0.0}
+  skeptical  {"n": 257, "user_words_per_turn": 14.6, "asst_words_per_turn": 21.4, "verification_acts_per_convo": 3.36, "acceptance_acts_per_convo": 0.04, "q_marks_per_user_turn": 0.98, "toy_evidence_per_user_turn": 0.05}
+
+Gate A: {"skeptical_frac_with_2plus_verification_acts": 0.938, "credulous_mean_verification_acts": 0.089, "passed": true}
+Gate B (pre-match): {"means": {"credulous": 159.6, "neutral": 153.9, "skeptical": 176.4}, "per_class_n": {"credulous": 236, "neutral": 253, "skeptical": 257}, "relative_spread": 0.138, "kruskal_p": 0.0, "passed": false}
+Gate B (post-match): {"means": {"credulous": 161.7, "neutral": 161.5, "skeptical": 161.8}, "per_class_n": {"credulous": 137, "neutral": 137, "skeptical": 137}, "relative_spread": 0.002, "kruskal_p": 0.9541, "passed": true}
+
+Matched per class: 137  (fallback floor: 80, top-up target: 100)
+PASSES the top-up threshold. Proceed with the matched 137/class set.
+
+Wrote merged set (780 conversations) -> data/prefixes_v2.json
+Wrote length-matched usable set (411 conversations) -> data/prefixes_v2_matched.json

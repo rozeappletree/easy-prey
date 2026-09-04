@@ -1,6 +1,6 @@
 # prefix_qc_selfcheck.txt
 # command: /opt/conda/envs/talktuner-gpu/bin/python src/prefix_qc.py
-# generated: 2026-09-04 10:16:24 UTC
+# generated: 2026-09-04 13:42:29 UTC
 # regenerate: bash src/run_all_checks.sh
 
 Self-check against prefixes.json (80 toy prefixes)
@@ -9,7 +9,7 @@ Re-parsed turn counts (analysis notebook: 8:3, 9:5, 10:40, 11:2, 12:30)
   8 turns: 3 | 9 turns: 5 | 10 turns: 40 | 11 turns: 2 | 12 turns: 30
 
 Yield under the toy rule (exactly 12 turns): 30/80 (37.5%)  [notebook: 30/80, 37.5%]
-Yield under the v2 rule (4-6 exchanges):      73/80 (91.2%)
+Yield under the v2 rule (4-6 exchanges):      70/80 (87.5%)
 
 Markers by class (notebook: user words 12.2 vs 18.1, assistant 22.6 vs 25.9,
                   q-marks 0.68 vs 1.16, toy-evidence 0.00 vs 0.09)

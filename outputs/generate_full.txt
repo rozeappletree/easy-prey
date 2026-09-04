@@ -1,0 +1,52 @@
+Generating 480 conversations (160 per class) with Qwen/Qwen2.5-14B-Instruct
+Loading checkpoint shards:   0%|          | 0/8 [00:00<?, ?it/s]Loading checkpoint shards:  12%|█▎        | 1/8 [00:00<00:00,  8.63it/s]Loading checkpoint shards:  25%|██▌       | 2/8 [00:00<00:00,  9.22it/s]Loading checkpoint shards:  38%|███▊      | 3/8 [00:00<00:00,  9.38it/s]Loading checkpoint shards:  50%|█████     | 4/8 [00:00<00:00,  9.38it/s]Loading checkpoint shards:  75%|███████▌  | 6/8 [00:00<00:00, 11.50it/s]Loading checkpoint shards: 100%|██████████| 8/8 [00:00<00:00, 13.18it/s]Loading checkpoint shards: 100%|██████████| 8/8 [00:00<00:00, 11.56it/s]
+  loaded in 75s | 29.7 GB allocated | batch 16
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+   16/480 | 32.4 convo/min | 100% usable so far
+   32/480 | 34.4 convo/min | 100% usable so far
+   48/480 | 35.0 convo/min | 100% usable so far
+   64/480 | 36.1 convo/min | 97% usable so far
+   80/480 | 36.3 convo/min | 96% usable so far
+   96/480 | 36.8 convo/min | 97% usable so far
+  112/480 | 36.8 convo/min | 97% usable so far
+  128/480 | 36.8 convo/min | 98% usable so far
+  144/480 | 36.6 convo/min | 98% usable so far
+  160/480 | 36.3 convo/min | 98% usable so far
+  176/480 | 36.4 convo/min | 98% usable so far
+  192/480 | 36.6 convo/min | 98% usable so far
+  208/480 | 36.6 convo/min | 98% usable so far
+  224/480 | 36.2 convo/min | 98% usable so far
+  240/480 | 36.1 convo/min | 98% usable so far
+  256/480 | 36.2 convo/min | 98% usable so far
+  272/480 | 36.0 convo/min | 97% usable so far
+  288/480 | 35.9 convo/min | 97% usable so far
+  304/480 | 35.9 convo/min | 97% usable so far
+  320/480 | 35.9 convo/min | 97% usable so far
+  336/480 | 36.0 convo/min | 97% usable so far
+  352/480 | 36.0 convo/min | 97% usable so far
+  368/480 | 36.0 convo/min | 97% usable so far
+  384/480 | 36.0 convo/min | 97% usable so far
+  400/480 | 36.1 convo/min | 96% usable so far
+  416/480 | 36.1 convo/min | 96% usable so far
+  432/480 | 36.2 convo/min | 96% usable so far
+  448/480 | 36.1 convo/min | 96% usable so far
+  464/480 | 36.2 convo/min | 96% usable so far
+  480/480 | 36.1 convo/min | 96% usable so far
+
+==============================================================================
+Generation: 480 conversations in 13.3 min (0.03 min each)
+Usable (4-6 complete exchanges, no trait-word leak): 462/480 (96.2%)
+Toy run for comparison: 1.10 min each, 37.5%% usable under its own rule
+Wrote /root/easy-prey/data/prefixes_v2.json
+
+==============================================================================
+Markers by class
+  credulous  {"n": 148, "user_words_per_turn": 12.8, "asst_words_per_turn": 19.3, "verification_acts_per_convo": 0.08, "acceptance_acts_per_convo": 2.63, "q_marks_per_user_turn": 0.58, "toy_evidence_per_user_turn": 0.0}
+  neutral    {"n": 156, "user_words_per_turn": 11.3, "asst_words_per_turn": 19.2, "verification_acts_per_convo": 0.05, "acceptance_acts_per_convo": 0.03, "q_marks_per_user_turn": 0.9, "toy_evidence_per_user_turn": 0}
+  skeptical  {"n": 158, "user_words_per_turn": 14.7, "asst_words_per_turn": 21.5, "verification_acts_per_convo": 3.34, "acceptance_acts_per_convo": 0.04, "q_marks_per_user_turn": 1.01, "toy_evidence_per_user_turn": 0.05}
+
+Gate A (construct validity): {"skeptical_frac_with_2plus_verification_acts": 0.924, "credulous_mean_verification_acts": 0.081, "passed": true}
+Gate B (length matching, pre-match): {"means": {"credulous": 158.4, "neutral": 152.2, "skeptical": 177.3}, "per_class_n": {"credulous": 148, "neutral": 156, "skeptical": 158}, "relative_spread": 0.154, "kruskal_p": 0.0, "passed": false}
+
+Next: read a sample by eye, then see docs/PLAN_TECHNICAL.md Step 2 for the top-up rule.

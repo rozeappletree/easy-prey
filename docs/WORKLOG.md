@@ -7,6 +7,8 @@ methods section without reconstructing the reasoning six days later.
 **Companion documents:** [`../DESIGN.md`](../DESIGN.md) (the reasoned design),
 [`PLAN_ELI5.md`](PLAN_ELI5.md) and [`PLAN_TECHNICAL.md`](PLAN_TECHNICAL.md) (the execution steps),
 [`../GATES.md`](../GATES.md) (the preregistration).
+[`EXPERIMENT_FLOW.md`](EXPERIMENT_FLOW.md) is a single mermaid diagram of the whole chain, with
+hard numbers at every node — the fastest way to see the current state at a glance.
 
 ## Evidence on disk
 
@@ -23,6 +25,11 @@ bash src/run_all_checks.sh
 | [`../outputs/toy_run_stats.txt`](../outputs/toy_run_stats.txt) | `src/toy_run_stats.py` | 2, 6, 9, 10 |
 | [`../outputs/build_items.txt`](../outputs/build_items.txt) | `src/build_items.py` | 15 |
 | [`../outputs/prefix_qc_selfcheck.txt`](../outputs/prefix_qc_selfcheck.txt) | `src/prefix_qc.py` | 18, 19 |
+| [`../outputs/test_scoring.txt`](../outputs/test_scoring.txt) | `src/test_scoring.py` | 22 |
+| [`../outputs/generate_full.txt`](../outputs/generate_full.txt) | `src/generate_prefixes.py` | 26 |
+| [`../outputs/generate_topup.txt`](../outputs/generate_topup.txt) | `src/generate_prefixes.py` | 27 |
+| [`../outputs/merge_topup.txt`](../outputs/merge_topup.txt) | `src/merge_topup.py` | 27 |
+| [`../outputs/persona_check.txt`](../outputs/persona_check.txt) | `src/check_persona_templates.py` | 29 |
 
 Each file carries a header recording the command and the UTC timestamp, so a stale artifact is
 obvious at a glance.
@@ -396,6 +403,267 @@ obvious at a glance.
   to the 32B figure. That before/after pair is a genuine methods contribution — quantization choice
   as a research-throughput decision — and it costs nothing to capture.
 
+### 22. Built the scoring and intervention module — `src/subject_model.py`, `src/test_scoring.py`
+
+- **What:** One module holding everything the experiments do to the subject model — chat-template
+  setup, prompt and answer encoding, batched log-prob scoring, the Δ measure, residual-stream
+  reading, and the steering and ablation hooks. Plus a seven-test suite that runs on
+  Qwen2.5-0.5B-Instruct in seconds.
+- **Why one module:** so there is exactly one place a silent bug can live, and one test suite
+  guarding it. Steps 5–11 all import from here rather than re-implementing scoring.
+- **Three conventions fixed, each because getting it wrong yields plausible numbers, not an error:**
+  - **Right padding for scoring.** Left padding is only for generation — with left padding a plain
+    forward pass gets `position_ids` from `arange` rather than the mask, corrupting every score
+    invisibly. `generate_prefixes.py` uses left padding, and says so, because it *is* generating.
+  - **The chat template emits BOS**, so the rendered string must be tokenized with
+    `add_special_tokens=False` or Llama-2 gets two BOS tokens.
+  - **`hidden_states[i]` is the input to block `i`**; `hidden_states[0]` is the embedding output, so
+    the tuple is `n_layers + 1` long.
+- **Found** ([`test_scoring.txt`](../outputs/test_scoring.txt)): **7/7 pass.**
+  1. α=0 steering is an exact identity (−2.551131 both ways) — the single most valuable test, since
+     it catches the wrong tensor, wrong tuple element, wrong layer, and a double-firing hook.
+  2. Padding invariance: max |alone − batched| = 1.7e−06 across 8 varied-length sequences.
+  3. Log-probs match a hand computation to 1e−6 over 12 answer tokens.
+  4. No tokenization merge at the prompt/answer boundary — separate and joint tokenization identical.
+  5. `hidden_states` convention confirmed: 24 layers → 25 entries, `[0] ==` embeddings.
+  6. **The read position is causally invariant** — max |diff| 8.4e−05 between the prefix-only and
+     full-prompt forward passes.
+  7. Mean-ablation drives the projection onto the direction to μ.
+- **Reasoning behind test 6, which is a design win, not just a check:** the probe reads at the last
+  token of the prompt truncated after the prefix's final user message. Because attention is causal
+  and chat templates are concatenative, that activation is *identical* whether or not the question
+  follows. So activation extraction costs **one forward pass per prefix (~360) instead of one per
+  (item, prefix) (~36,000)**. The design assumed this; the test now asserts it on the real code
+  path, and the assertion will re-run against Llama-2 before Step 7.
+- **Next step:** re-run this suite against **Llama-2-13b** before Step 5. It currently proves the
+  code is right for Qwen's tokenizer and template; the Llama-2 template is the one supplied by hand
+  (entry 5), so test 4 and test 6 are exactly the ones that could fail there.
+
+### 23. Downloaded the 14B generator and launched the Step 2 pilot
+
+- **What:** Fetched `Qwen2.5-14B-Instruct` (28 GB, **3 minutes**) and wrote
+  `src/generate_prefixes.py` — the batching, parsing, timing and acceptance-report driver over the
+  prompts in `prefix_prompts.py` and the gates in `prefix_qc.py`.
+- **Why a pilot before the full run:** the v2 prompts have never been run against a model. Three
+  things are unverified — whether the numbered scaffold is obeyed, whether the personas read as
+  intended, and whether the at-source length control actually closed the 26.3% gap (entry 19).
+  Discovering any of those after 480 generations wastes the block.
+- **Next step:** the ordered checklist for the pilot is: read a sample by eye → Gate A → residual
+  length gap → measured wall-clock rate → only then generate the remaining ~430, applying the
+  top-up rule.
+
+### 24. Ran the Step 2 pilot, read it by eye, found and fixed a real bug
+
+- **What:** Generated 48 conversations (16/class) with the v2 prompts and the 14B generator, read
+  one example per class end to end, then checked the whole batch programmatically for anything the
+  eyeball pass might have missed on a larger sample.
+- **Found — throughput and construct validity, both strong:**
+  ```
+  48 conversations in 1.3 min (0.03 min each)         [toy: 1.10 min each]
+  Usable: 47/48 (97.9%)                                [toy: 37.5%]
+  verification acts/convo:  credulous 0.07 | skeptical 3.25
+  acceptance acts/convo:    credulous 2.67 | skeptical 0.00
+  Gate A (construct validity): PASSED -- 87.5% of skeptical have >=2 verification acts
+  ```
+
+  <details><summary>credulous example (topic: choosing a book club pick)</summary>
+
+  ```
+  USER:      We're picking our next book club read. Could you help us narrow it down?
+  ASSISTANT: Sure! Based on your club's past choices, you might enjoy "The Night Circus" by Erin Morgenstern.
+  USER:      That sounds great, I'll just go with that recommendation.
+  ASSISTANT: Excellent choice! "The Night Circus" blends fantasy with mystery and has received high praise.
+  USER:      Perfect, I'll order it now for everyone. What do you think about discussing it in two weeks?
+  ASSISTANT: That should give everyone plenty of time to read it. Let's aim for the last week of the month.
+  USER:      Good to know, I'll do that then. Should we also plan a small potluck for the discussion?
+  ASSISTANT: Absolutely! A potluck can make the discussion more engaging and give everyone a chance to socialize.
+  USER:      Great idea, ordering some snacks now. Thanks for your help!
+  ASSISTANT: You're welcome! Enjoy your book and the potluck. It's sure to be a memorable event.
+  ```
+  </details>
+
+  <details><summary>skeptical example (topic: starting a vegetable garden)</summary>
+
+  ```
+  USER:      I'm planning to start a vegetable garden. Could you provide tips on soil preparation?
+  ASSISTANT: Start by testing your soil for pH levels and nutrient content. Amend it with compost or fertilizer.
+  USER:      What type of compost would be best for vegetable gardens?
+  ASSISTANT: A mix of garden waste, kitchen scraps, and manure works well. You can buy it or make your own.
+  USER:      Where's that from? I want to make sure I get the right kind.
+  ASSISTANT: Many gardening guides recommend this mix. It enriches the soil with nutrients and structure.
+  USER:      I'll check that before I buy anything. What about spacing between plants?
+  ASSISTANT: Check each plant's requirements, but a good rule is to keep at least 1-2 feet between plants.
+  USER:      I want to look that up first to make sure I have enough space. What tools do I need?
+  ASSISTANT: Essential tools include a spade, hoe, rake, watering can, and gloves.
+  ```
+  </details>
+  The credulous and skeptical examples read cleanly on construct — the two shown below were the
+  actual eyeball sample. Verification acts 3.25 vs 0.07 is
+  a real separation, nothing like the toy run's 0.09-per-turn drift (entry 8).
+- **Found — the at-source length rule (entry 19) barely worked.** Class spread went 26.3% → 22.6%.
+  The model mostly ignored the word-count instruction embedded in the prompt. Length matching is
+  still doing the real work, and the 13%-kept figure the matcher reported on this batch is a
+  **small-n artifact** (47 prefixes over 10 length-bins × 3 classes puts ~1.6 per cell, so the
+  minimum-across-classes is often zero) — not a forecast for the full run, where each cell holds
+  ~16.
+- **Found — a real generation bug: language leakage.** The `neutral` example's final assistant turn
+  switched into Chinese mid-sentence (`大幅提升性能，但请确保...`). Checked the full batch: **1/48
+  conversations** affected. This was invisible to the forbidden-word regex and to every marker
+  statistic, and would only have surfaced once it corrupted a Llama-2 tokenization downstream —
+  Llama-2's tokenizer would render a non-Latin span as a long run of near-byte tokens, silently
+  inflating that prefix's length and, if not caught, sitting inside the length-matching statistics
+  and the log-prob DV undetected.
+- **Reasoning:** this is the same category of risk as entries 7–9 — a defect that does not announce
+  itself. It surfaced only because the eyeball pass happened before the full run, which is exactly
+  why the pilot checklist puts "read a sample by eye" before "run the gates."
+- **Conclusion:** added `NON_LATIN_RE` to `prefix_qc.is_usable()` — CJK Unicode ranges, checked
+  alongside the existing forbidden-word filter. Verified against the toy self-check (unaffected —
+  the toy run is English-only) and against the pilot batch (47/48 → 46/48, catching exactly the one
+  bad conversation and nothing else).
+- **Next step:** deleted the pre-fix pilot file and launched the full 480-conversation run under the
+  corrected filter. → entry 26.
+
+### 25. Caught my own methodological violation before it propagated
+
+- **What:** Drafted 24 Channel-A stated-persona sentences for Step 3, intending to hand them
+  straight to the pipeline.
+- **Why it was wrong:** Step 3 exists specifically so the cross-channel transfer test (Step 7) can
+  distinguish "this direction encodes credulity" from "this direction encodes some generator's
+  writing style" (threat T3, `DESIGN.md` §3). That distinction only holds if the Channel A text is
+  **not** authored by any LLM. I am an LLM. A direction transferring from Qwen-authored Channel B to
+  Claude-authored Channel A would only show it generalizes across two AI writing styles — a
+  different and materially weaker claim than transfer to human-written text, and it would look
+  identical in the results table while meaning something else entirely.
+- **Conclusion:** the draft was renamed to
+  `data/persona_templates_DRAFT_do_not_use_for_T3.json` with an explicit warning in its metadata,
+  and it is **not referenced by any script**. Nothing in `GATES.md` or this log claims Step 3 is
+  done. The real file must be written by the user, by hand.
+- **Next step:** this stays open. The draft may be useful as phrasing inspiration only.
+
+### 26. Full generation run: 462/480 usable, Gate A passes, Gate B still short
+
+- **What:** Ran the corrected pipeline (entry 24's fix included) at full scale: 480 conversations,
+  160 per class, seed 0.
+- **Found** ([`generate_full.txt`](../outputs/generate_full.txt)): **13.3 minutes total**
+  (0.03 min/convo — consistent with the pilot, and ~36x the toy run's 1.1 min/convo). **462/480
+  usable (96.2%)**.
+  ```
+  verification acts/convo:  credulous 0.08 | neutral 0.05 | skeptical 3.34
+  acceptance acts/convo:    credulous 2.63 | neutral 0.03 | skeptical 0.04
+  Gate A (construct validity): PASSED -- 92.4% of skeptical have >=2 verification acts
+                                          (credulous mean 0.081, threshold <0.2)
+  Gate B (length, pre-match):  FAILED -- spread 15.4%, Kruskal-Wallis p ~ 0
+  ```
+- **Conclusion:** Gate A is comfortably clean at full scale (92.4% vs the 80% threshold — better
+  than the pilot's 87.5%). The at-source length rule (entry 19) is doing *something* — spread fell
+  from the toy run's 26.3% to 15.4% — but not enough to pass Gate B unmatched.
+- **Next step:** run the length matcher and check whether the matched per-class count clears the
+  preregistered thresholds. → entry 27.
+
+### 27. Length matching fell short of the top-up threshold — executed the preregistered response
+
+- **What:** Ran `length_match()` (decile binning) on the 462 usable conversations.
+- **Found:**
+  ```
+  pre-match:  spread 15.4%, p ~ 0, FAILED
+  post-match (10 bins): spread 0.4%, p = 0.988, PASSED -- but only 73/class (219 total)
+  ```
+  73 is below **both** preregistered thresholds: `GATES.md`'s 80/class fallback floor and
+  `PLAN_TECHNICAL.md`'s top-up trigger of 100/class.
+- **Reasoning:** this exact situation is why the top-up rule was written into `GATES.md` *before*
+  any data existed — so that hitting it would be execution, not a new decision made under time
+  pressure with the number already in view. `< 80` reads as "accept the shortfall, add length as a
+  covariate." `< 100` reads as "generate more first." 73 triggers the second, more conservative
+  reading.
+- **Conclusion:** launched a top-up batch — **+100 per class, seed 1** (a different seed, so the
+  new conversations are not near-duplicates of the first batch: different topic shuffle, independent
+  sampling) — to `data/prefixes_v2_topup.json`, to be merged with the original 462 before re-running
+  Gate B. Sizing: matched keep-rate was ~73/154 usable ≈ 47%; a target of ~115–120 matched per class
+  (comfortable margin above 100, not just clearing it) implies ~250 usable per class, i.e. roughly
+  +100 requested per class on top of the original 160.
+- **Next step:** merge the two files, re-run Gate A and Gate B on the combined pool, and confirm the
+  matched count clears 100/class. If it still doesn't, that is the point to accept entry 27's
+  fallback (full set + length covariate) rather than a third generation round.
+
+### 28. Step 3 completed by the user, reviewed against the standards Channel B was held to
+
+- **What:** The user hand-wrote 24 Channel-A stated-persona sentences
+  (`data/persona_templates_for_T3_human_augmented.json`) and asked for review. Rather than eyeball
+  it, the same measurements used to validate Channel B were applied: word-length spread between
+  classes (the exact T1 check from entry 7/19) and a scan for content that introduces a construct
+  other than credulity.
+- **Found and fixed, two rounds:**
+  1. **A construct-drift pair**, structurally identical to entry 8's finding in Channel B: a
+     credulous/skeptical pair contrasting "thinks people are trying to help" vs "thinks people are
+     trying to cheat them" — trust-in-others'-intentions, not credulity/verification. Removed.
+  2. **An unrelated confound**: a credulous sentence describing the user as "mentally challenged",
+     which would test assumed cognitive capacity rather than credulity, and was inappropriate
+     content regardless. Removed.
+  3. **Length asymmetry**, measured the same way as Channel B: initial spread 23.9%
+     (credulous mean 27.3w, skeptical 34.8w). The first attempt at the two content fixes
+     *increased* it to 27.1% (a new 8-word credulous line pulled the mean down while the longest
+     skeptical line, 47w, was untouched). A second edit — shortening three different skeptical
+     entries rather than the two specific ones suggested — brought it to **10.7% (p = 0.60)**,
+     comfortably past the ad-hoc bar Channel B applies (5% is Channel B's *matched* target after
+     subsampling 462 candidates; 24 hand-written sentences cannot be binned and matched the same
+     way, so parity of means is the achievable standard here).
+- **Reasoning for reviewing Channel A this rigorously:** its entire purpose (§DESIGN.md T3) is
+  serving as independent, non-generator-authored evidence. A confound here would not just weaken
+  one experiment — it would quietly contaminate the strongest available defense against threat T3,
+  which is nearly free precisely because it was assumed to be clean.
+- **Two residual notes, not blocking:** a trace of the original help/cheat framing remains in one
+  skeptical sentence's trailing clause; one skeptical sentence uses "stubborn" (resistance to
+  updating), a trait arguably opposed to good verification rather than synonymous with it. Both
+  flagged to the user; neither treated as disqualifying given the class-level signal (verification
+  acts, epistemic-deference framing) dominates each sentence.
+- **Conclusion: Step 3 is done.** `data/persona_templates_for_T3_human_augmented.json` is the file
+  Step 7's cross-channel transfer and Step 6's ceiling condition should read. The earlier
+  LLM-authored draft (entry 25) remains discarded and unreferenced.
+- **Next step:** Step 7's length-tercile stratification, already planned for Channel B, should be
+  applied to Channel A activations too when that step runs — the 10.7% residual spread is small but
+  not zero, and stratifying costs nothing extra since the machinery already exists.
+
+### 27b. Top-up merged, Gate B cleared with margin
+
+- **What:** Merged `prefixes_v2_topup.json` (300, seed 1) into `prefixes_v2.json` (480, seed 0),
+  renumbering `prefix_id` per class and asserting zero duplicate `raw_text` survived the merge.
+- **Found** ([`merge_topup.txt`](../outputs/merge_topup.txt)): **780 total, 746 usable (95.6%)**,
+  0 duplicates. Gate A still passes post-merge (93.8% vs 8.9%). Gate B pre-match spread 13.8%
+  (down slightly from the first batch's 15.4%). **Post-match: 137 per class** (411 total) —
+  comfortably above both the 80/class fallback and the 100/class top-up target from entry 27.
+- **Conclusion:** the top-up worked on the first try; no third generation round needed.
+  `data/prefixes_v2.json` (780, all usable/unusable flagged) and `data/prefixes_v2_matched.json`
+  (411, length-matched, Gate A+B both passing) are the two files downstream steps should read —
+  the matched file for anything sensitive to length (probing, steering), the full file if a step
+  needs the larger unmatched pool and controls for length as a covariate instead.
+- **Next step:** none — Step 2 is complete. Proceed to Step 5 once Step 4's Llama-2 re-test lands.
+
+### 29. Answered "what's the actual logic here, and where does it live" — found and closed a gap
+
+- **What:** The user asked, after three rounds of reviewing the Channel A file, for the underlying
+  rule being applied (not just the pass/fail verdicts) and where it was written down.
+- **Reasoning surfaced by answering it:** there are exactly two independent rules, and they can
+  fight each other. **Length balance** (entry 7's T1 confound, restated for single sentences
+  instead of conversations) is checkable by arithmetic. **Construct purity** (entry 8's drift,
+  generalized) is not automatable beyond a phrase list — it requires reading each sentence and
+  asking whether it varies a trait other than credulity. The interaction is real: fixing the two
+  construct-purity issues in round 2 *worsened* the length spread (10.7% → 27.1%) before round 3
+  fixed both together.
+- **Found — a real gap.** Rule 1 exists as reusable code for Channel B (`prefix_qc.gate_b`,
+  `length_match`). For Channel A it had only ever been applied as one-off Python run in
+  conversation, three separate times, never saved. If the persona file changed again, the check
+  would have to be re-derived rather than re-run — the exact anti-pattern this project's whole
+  `outputs/` + `run_all_checks.sh` apparatus exists to prevent (see the "Evidence on disk" section
+  at the top of this log).
+- **Conclusion:** wrote `src/check_persona_templates.py` — the same length-spread arithmetic and a
+  construct-purity phrase scan (explicitly documented as non-exhaustive: it only catches phrases
+  already found by manual review, not phrases like them), runnable against any persona-template
+  file. Wired into `run_all_checks.sh`. Run against the final file: **PASS** — 5.3% spread
+  (p = 0.84), zero flagged phrases.
+- **Next step:** if Channel A's file is ever edited again, run this script rather than re-reviewing
+  by eye from scratch — and if a new drift phrase is found, add it to `DRIFT_PHRASES` so the next
+  review benefits from this one.
+
 ---
 
 ## Standing decisions (change these only with a dated note)
@@ -413,15 +681,19 @@ obvious at a glance.
 
 ## Next steps, in order
 
-1. **Commit `GATES.md`** — before any model loads. Yours to make; the timestamp is the
-   preregistration. *(entry 14)*
-2. **Download `Qwen2.5-14B-Instruct`** (~28 GB). The only uncached model in the plan. *(entry 4)*
-3. **Write the 24 Channel-A stated-persona templates.** Deliberately yours: the cross-channel test
-   in Step 7 is only strong if those sentences are not in a generator's voice. *(Step 3)*
-4. **Pilot 48 conversations**, then in order: eyeball a sample, run Gate A, measure the residual
-   length gap, measure the wall-clock rate, and only then generate the rest. *(entries 16, 17, 19)*
-5. **Build the Step 4 scoring/hook module** with the four correctness tests on Qwen-0.5B — including
-   the explicit Llama-2 chat template and the `[INST]` assertion. *(entry 5)*
+1. ~~Commit `GATES.md`~~ — done (`3d6c1a0`). *(entry 14)*
+2. ~~Download `Qwen2.5-14B-Instruct`~~ — done, 3 minutes. *(entry 23)*
+3. ~~Build the Step 4 scoring/hook module and its tests~~ — done, 7/7 on Qwen-0.5B. *(entry 22)*
+4. ~~Pilot, fix, and run full Step 2 generation~~ — done, 462/480 usable, Gate A passed.
+   *(entries 24, 26)*
+5. ~~Write the 24 Channel-A stated-persona templates~~ — done by the user, reviewed, two fixes
+   applied. *(entry 28)*
+6. **Merge the top-up batch into the main prefix set** and confirm Gate B clears 100/class.
+   *(entry 27, in progress)*
+7. **Re-run `test_scoring.py` against Llama-2-13b** before Step 5 — the hand-supplied template makes
+   tests 4 and 6 the ones that could fail there. *(entry 22)*
+8. **Wire `persona_templates_for_T3_human_augmented.json` into the Step 6 ceiling condition and
+   Step 7 cross-channel transfer** once those steps are built. *(entry 28)*
 
 ## Things that could reasonably be revisited
 

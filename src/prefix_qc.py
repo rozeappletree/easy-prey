@@ -73,6 +73,12 @@ FORBIDDEN_RE = re.compile(
     re.I,
 )
 
+# Qwen occasionally code-switches into Chinese/Japanese/Korean mid-generation (found in the v2
+# pilot: 1/48 conversations, in an otherwise-fine assistant turn). A leaked non-Latin span is
+# scored by the Llama-2 tokenizer as a run of near-unk byte tokens, which would silently corrupt
+# both the length-matching statistics and the log-prob DV for that prefix. See WORKLOG entry 24.
+NON_LATIN_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7a3]")
+
 
 # --------------------------------------------------------------------------- parsing
 
@@ -96,7 +102,8 @@ def is_usable(turns: list, raw: str) -> bool:
     """v2 accepts 4-6 complete exchanges. The toy run demanded exactly 6 and threw away 62.5%."""
     return (MIN_EXCHANGES <= n_exchanges(turns) <= MAX_EXCHANGES
             and len(turns) % 2 == 0
-            and not FORBIDDEN_RE.search(raw))
+            and not FORBIDDEN_RE.search(raw)
+            and not NON_LATIN_RE.search(raw))
 
 
 # --------------------------------------------------------------------------- markers

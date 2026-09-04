@@ -1,0 +1,41 @@
+Generating 300 conversations (100 per class) with Qwen/Qwen2.5-14B-Instruct
+Loading checkpoint shards:   0%|          | 0/8 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 2/8 [00:00<00:00, 12.96it/s]Loading checkpoint shards:  50%|█████     | 4/8 [00:00<00:00, 13.64it/s]Loading checkpoint shards:  75%|███████▌  | 6/8 [00:00<00:00, 14.33it/s]Loading checkpoint shards: 100%|██████████| 8/8 [00:00<00:00, 15.09it/s]Loading checkpoint shards: 100%|██████████| 8/8 [00:00<00:00, 14.58it/s]
+  loaded in 5s | 29.7 GB allocated | batch 16
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+   16/300 | 32.2 convo/min | 88% usable so far
+   32/300 | 32.9 convo/min | 94% usable so far
+   48/300 | 33.8 convo/min | 96% usable so far
+   64/300 | 34.4 convo/min | 97% usable so far
+   80/300 | 34.0 convo/min | 96% usable so far
+   96/300 | 34.4 convo/min | 96% usable so far
+  112/300 | 34.0 convo/min | 96% usable so far
+  128/300 | 34.4 convo/min | 96% usable so far
+  144/300 | 34.3 convo/min | 96% usable so far
+  160/300 | 34.2 convo/min | 94% usable so far
+  176/300 | 34.4 convo/min | 95% usable so far
+  192/300 | 34.6 convo/min | 95% usable so far
+  208/300 | 34.6 convo/min | 95% usable so far
+  224/300 | 34.8 convo/min | 95% usable so far
+  240/300 | 34.9 convo/min | 94% usable so far
+  256/300 | 34.7 convo/min | 95% usable so far
+  272/300 | 35.0 convo/min | 94% usable so far
+  288/300 | 35.0 convo/min | 95% usable so far
+  300/300 | 35.1 convo/min | 95% usable so far
+
+==============================================================================
+Generation: 300 conversations in 8.6 min (0.03 min each)
+Usable (4-6 complete exchanges, no trait-word leak): 284/300 (94.7%)
+Toy run for comparison: 1.10 min each, 37.5%% usable under its own rule
+Wrote /root/easy-prey/data/prefixes_v2_topup.json
+
+==============================================================================
+Markers by class
+  credulous  {"n": 88, "user_words_per_turn": 13.0, "asst_words_per_turn": 19.5, "verification_acts_per_convo": 0.1, "acceptance_acts_per_convo": 2.62, "q_marks_per_user_turn": 0.6, "toy_evidence_per_user_turn": 0.0}
+  neutral    {"n": 97, "user_words_per_turn": 11.6, "asst_words_per_turn": 19.9, "verification_acts_per_convo": 0.06, "acceptance_acts_per_convo": 0.02, "q_marks_per_user_turn": 0.9, "toy_evidence_per_user_turn": 0.0}
+  skeptical  {"n": 99, "user_words_per_turn": 14.5, "asst_words_per_turn": 21.2, "verification_acts_per_convo": 3.38, "acceptance_acts_per_convo": 0.04, "q_marks_per_user_turn": 0.95, "toy_evidence_per_user_turn": 0.06}
+
+Gate A (construct validity): {"skeptical_frac_with_2plus_verification_acts": 0.96, "credulous_mean_verification_acts": 0.102, "passed": true}
+Gate B (length matching, pre-match): {"means": {"credulous": 161.7, "neutral": 156.7, "skeptical": 174.9}, "per_class_n": {"credulous": 88, "neutral": 97, "skeptical": 99}, "relative_spread": 0.111, "kruskal_p": 0.0, "passed": false}
+
+Next: read a sample by eye, then see docs/PLAN_TECHNICAL.md Step 2 for the top-up rule.

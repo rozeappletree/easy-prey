@@ -1,0 +1,21 @@
+# test_scoring.txt
+# command: /opt/conda/envs/talktuner-gpu/bin/python src/test_scoring.py
+# generated: 2026-09-04 13:42:29 UTC
+# regenerate: bash src/run_all_checks.sh
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+Correctness tests for subject_model.py
+  model:  Qwen/Qwen2.5-0.5B-Instruct
+  device: cuda
+
+  loaded: 24 layers, d_model 896, padding_side 'right'
+
+  PASS  1. alpha=0 steering is an exact identity       -2.551131 == -2.551131
+  PASS  2. scores are invariant to batch padding       max |alone - batched| = 1.67e-06 over 8 sequences
+  PASS  3. log-probs match a hand computation          -1.828396 == -1.828396 over 12 answer tokens
+  PASS  4. answer tokenization has no boundary merge   42 prompt + 14 answer tokens, joint tokenization identical
+  PASS  5. hidden_states convention is as documented   24 layers -> 25 hidden_states, [0] == embeddings
+  PASS  6. read position is causally invariant         position 79, max |diff| = 8.39e-05 across all layers
+  PASS  7. mean-ablation sets the projection to mu     projection -0.118 -> -0.000 (mu=0.0)
+
+7/7 passed

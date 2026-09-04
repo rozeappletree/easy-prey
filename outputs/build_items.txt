@@ -1,6 +1,6 @@
 # build_items.txt
 # command: /opt/conda/envs/talktuner-gpu/bin/python src/build_items.py
-# generated: 2026-09-04 10:16:23 UTC
+# generated: 2026-09-04 13:42:28 UTC
 # regenerate: bash src/run_all_checks.sh
 
 TruthfulQA: 817 rows -> 722 usable (dropped 56 refusals, 39 with <2 lures)
