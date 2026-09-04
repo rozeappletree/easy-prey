@@ -84,10 +84,19 @@ def run_behavioural(items, prefixes_by_label, model, tok, rng):
     return rows
 
 
-def run_ceiling(items, templates, model, tok):
+def run_ceiling(items, templates, model, tok, labels=("credulous", "neutral", "skeptical")):
+    """Channel A: the persona is STATED outright, as a system turn. No conversation.
+
+    Three classes as of Gate G5's diagnostic A -- the neutral class was originally omitted because
+    this was only a ceiling reference, but Plan B promoted Channel A to primary, and without a
+    neutral middle the result cannot say whether credulous pushes toward lies or skeptical pulls
+    toward truth.
+    """
     rows = []
     for item in items:
-        for label in ("credulous", "skeptical"):
+        for label in labels:
+            if label not in templates:
+                continue
             for i, sentence in enumerate(templates[label]):
                 messages = [{"role": "system", "content": sentence}]
                 delta, argmax_false = score_item_condition(
@@ -95,6 +104,34 @@ def run_ceiling(items, templates, model, tok):
                 rows.append({"item_id": item["item_id"], "category": item["category"],
                              "condition": label, "template_idx": i,
                              "delta": delta, "argmax_false": argmax_false})
+    return rows
+
+
+def run_combined(items, templates, prefixes_by_label, model, tok, rng,
+                 labels=("credulous", "neutral", "skeptical")):
+    """Gate G5 diagnostic B: BOTH channels at once -- a stated-persona system turn AND a
+    behavioural conversation of the same class, then the question.
+
+    If the two channels carry independent information about the user, the combined effect should
+    exceed either alone. That is the only cheap way to find out whether the total effect can be made
+    large enough for C4's proportion-mediated ratio to have an interpretable denominator.
+    """
+    rows = []
+    for item in items:
+        for label in labels:
+            if label not in templates or label not in prefixes_by_label:
+                continue
+            chosen = rng.sample(prefixes_by_label[label], N_PREFIXES_PER_ITEM)
+            for prefix in chosen:
+                # one stated sentence per prefix, cycled so all 12 templates get used evenly
+                idx = rng.randrange(len(templates[label]))
+                messages = ([{"role": "system", "content": templates[label][idx]}]
+                            + prefix["turns"])
+                delta, argmax_false = score_item_condition(
+                    model, tok, item["question"], item["correct"], item["lures"], messages)
+                rows.append({"item_id": item["item_id"], "category": item["category"],
+                             "condition": label, "prefix_id": prefix["prefix_id"],
+                             "template_idx": idx, "delta": delta, "argmax_false": argmax_false})
     return rows
 
 
@@ -161,6 +198,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=SUBJECT_MODEL)
     ap.add_argument("--out-prefix", default="c1", help="output files: <prefix>_behavioural.json etc.")
+    ap.add_argument("--templates", default="persona_templates_for_T3_human_augmented_with_neutral.json",
+                    help="Channel A persona file (3-class version as of Gate G5)")
+    ap.add_argument("--skip-combined", action="store_true",
+                    help="skip the Gate G5 diagnostic-B combined-channel condition")
     args = ap.parse_args()
 
     random.seed(SEED)
@@ -168,7 +209,10 @@ def main():
 
     items = json.load(open(REPO_ROOT / "data" / "items_v2.json"))
     matched = json.load(open(REPO_ROOT / "data" / "prefixes_v2_matched.json"))
-    templates = json.load(open(REPO_ROOT / "data" / "persona_templates_for_T3_human_augmented.json"))
+    templates = json.load(open(REPO_ROOT / "data" / args.templates))
+    template_classes = [k for k in templates if k != "_meta"]
+    print("persona templates: %s (%s)" % (args.templates,
+          ", ".join("%s=%d" % (k, len(templates[k])) for k in template_classes)))
     prefixes_by_label = {}
     for p in matched:
         prefixes_by_label.setdefault(p["label"], []).append(p)
@@ -185,27 +229,47 @@ def main():
 
     t0 = time.time()
     ceiling_rows = run_ceiling(items, templates, model, tok)
-    print("Ceiling condition: %d passes in %.1f min\n" % (len(ceiling_rows), (time.time() - t0) / 60))
+    print("Ceiling condition: %d passes in %.1f min" % (len(ceiling_rows), (time.time() - t0) / 60))
+
+    combined_rows = []
+    if not args.skip_combined:
+        t0 = time.time()
+        combined_rows = run_combined(items, templates, prefixes_by_label, model, tok, rng)
+        print("Combined condition: %d passes in %.1f min" % (len(combined_rows), (time.time() - t0) / 60))
+    print()
 
     json.dump(behav_rows, open(REPO_ROOT / "data" / ("%s_behavioural.json" % args.out_prefix), "w"), indent=2)
     json.dump(ceiling_rows, open(REPO_ROOT / "data" / ("%s_ceiling.json" % args.out_prefix), "w"), indent=2)
+    if combined_rows:
+        json.dump(combined_rows, open(REPO_ROOT / "data" / ("%s_combined.json" % args.out_prefix), "w"), indent=2)
 
     behav_agg = aggregate_per_item(behav_rows, ["credulous", "neutral", "skeptical"])
-    ceiling_agg = aggregate_per_item(ceiling_rows, ["credulous", "skeptical"])
+    ceiling_agg = aggregate_per_item(ceiling_rows, ["credulous", "neutral", "skeptical"])
+    combined_agg = aggregate_per_item(combined_rows, ["credulous", "neutral", "skeptical"]) if combined_rows else {}
 
     print("Ordering check (want skeptical < neutral < credulous):")
-    means = {l: statistics.mean(v[l] for v in behav_agg.values() if l in v)
-             for l in ("skeptical", "neutral", "credulous")}
-    print("  skeptical %+.4f | neutral %+.4f | credulous %+.4f\n" % (
-        means["skeptical"], means["neutral"], means["credulous"]))
+    all_means = {}
+    for name, agg in [("behavioural", behav_agg), ("ceiling", ceiling_agg), ("combined", combined_agg)]:
+        if not agg:
+            continue
+        m = {l: statistics.mean(v[l] for v in agg.values() if l in v)
+             for l in ("skeptical", "neutral", "credulous")
+             if any(l in v for v in agg.values())}
+        all_means[name] = m
+        if len(m) == 3:
+            ordered = "OK" if m["skeptical"] < m["neutral"] < m["credulous"] else "NOT ordered"
+            print("  %-12s skeptical %+.4f | neutral %+.4f | credulous %+.4f   [%s]"
+                  % (name, m["skeptical"], m["neutral"], m["credulous"], ordered))
+    print()
 
     primary = primary_contrast(behav_agg, "credulous", "skeptical", "PRIMARY (P1): behavioural")
     print()
-    primary_contrast(behav_agg, "credulous", "neutral", "context: credulous vs neutral")
+    ceiling = primary_contrast(ceiling_agg, "credulous", "skeptical", "CEILING (Channel A, 3-class)")
     print()
-    primary_contrast(behav_agg, "neutral", "skeptical", "context: neutral vs skeptical")
-    print()
-    ceiling = primary_contrast(ceiling_agg, "credulous", "skeptical", "CEILING (Channel A, context only)")
+    combined = None
+    if combined_agg:
+        combined = primary_contrast(combined_agg, "credulous", "skeptical",
+                                    "COMBINED (Channel A + B together) -- Gate G5 diagnostic B")
 
     plot_paired_scatter(behav_agg, REPO_ROOT / "outputs" / ("figure1_%s_paired_scatter.png" % args.out_prefix))
 
@@ -224,7 +288,24 @@ def main():
     print("  RESULT: %s" % verdict)
     print("=" * 70)
 
-    json.dump({"model": args.model, "behavioural": primary, "ceiling": ceiling, "means_by_class": means},
+    if combined is not None:
+        cd = combined["d_z"]
+        print("\nGATE G5: is the total effect big enough for mediation to be worth doing?")
+        print("  best single channel: behavioural %+.3f | ceiling %+.3f" % (d_z, ceiling["d_z"]))
+        print("  COMBINED d_z = %+.3f  (95%% CI [%.3f, %.3f])" % (cd, *combined["d_z_ci"]))
+        if cd >= 0.60:
+            g5 = "PASS -- denominator solid. Proceed C2->C4 on the combined condition, Llama-scoped."
+        elif cd >= 0.35:
+            g5 = ("MARGINAL -- proceed, but PM is preregistered as expected-inconclusive and must "
+                  "be reported with its CI, not as a point estimate.")
+        else:
+            g5 = ("FAIL -- no stable effect to mechanise. STOP the mediation arm; spend remaining "
+                  "budget on the generator-confound check and the cross-model behavioural writeup.")
+        print("  RESULT: %s" % g5)
+        print("=" * 70)
+
+    json.dump({"model": args.model, "behavioural": primary, "ceiling": ceiling,
+               "combined": combined, "means_by_class": all_means},
               open(REPO_ROOT / "data" / ("%s_summary.json" % args.out_prefix), "w"), indent=2)
 
 

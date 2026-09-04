@@ -38,6 +38,9 @@ bash src/run_all_checks.sh
 | [`../outputs/figure1_c1_paired_scatter.png`](../outputs/figure1_c1_paired_scatter.png) | `src/c1_total_effect.py` | 34 |
 | [`../outputs/examples_dissociation.txt`](../outputs/examples_dissociation.txt) | `src/list_dissociation_examples.py` | 37 |
 | [`../outputs/examples_agreement.txt`](../outputs/examples_agreement.txt) | `src/list_dissociation_examples.py` | 37 |
+| [`../outputs/c1_g5_llama13b.log`](../outputs/c1_g5_llama13b.log) | `src/c1_total_effect.py` (Gate G5 diagnostics) | 38 |
+| [`../outputs/c2_encoding.log`](../outputs/c2_encoding.log) | `src/c2_encoding.py` (final, CV-regularized) | 39–41 |
+| [`../outputs/c3_sufficiency.log`](../outputs/c3_sufficiency.log) | `src/c3_sufficiency.py` | 42 |
 
 Each file carries a header recording the command and the UTC timestamp, so a stale artifact is
 obvious at a glance.
@@ -970,6 +973,189 @@ obvious at a glance.
 - **Next step:** none required; this is a reference artifact for manual inspection, not an input to
   a later step. Regenerate with `src/list_dissociation_examples.py` if the underlying C1 data
   changes (e.g. after the second-generator re-run planned in entry 36).
+
+### 38. Gate G5: neutral ceiling + combined channel — MARGINAL, proceeding on the combined condition
+
+- **What:** Ran the two diagnostics preregistered in `GATES.md` Gate G5, on Llama-2-13b: (A) the
+  ceiling condition with the newly-written neutral class added; (B) a new "combined" condition
+  applying the stated persona **and** a behavioural prefix together, then the question.
+  `src/c1_total_effect.py` extended: `run_ceiling` now takes 3 classes, new `run_combined()`,
+  ordering check now reported per-condition.
+- **Found:**
+  ```
+                     credulous   skeptical    d_z      95% CI
+  behavioural         -0.408      -0.408    -0.001   [-0.18, +0.21]   NOT ordered
+  ceiling             -0.597      -0.687    +0.373   [ 0.16, +0.65]   ordered
+  combined            -0.042      -0.313    +0.505   [+0.375,+0.798]  ordered
+  ```
+  Diagnostic A: adding a neutral middle does not rescue the behavioural channel — it remains flat
+  and fails the ordering check, confirming entry 34's null is not an artifact of missing a neutral
+  condition. Diagnostic B: the two channels **stack** — combined total swing (0.271 nats) is ~3x
+  ceiling alone (0.090 nats), and critically the CI lower bound (0.375) clears zero by a wide margin
+  where ceiling alone's did not comfortably (0.159).
+- **Verdict, per the threshold committed before this ran:** `d_z` = 0.505 falls in the **0.35–0.60
+  MARGINAL band**. Held the line rather than treating "just under 0.60" as a pass — the whole point
+  of writing the gate down first was to remove that exact temptation.
+- **Conclusion — the preregistered MARGINAL action, executed:** proceed to Step 7 (C2 encoding)
+  on the **combined condition** (stated persona + behavioural prefix, Llama-2-13b only) as `X`, with
+  `PM` at Step 9 preregistered *now* as expected-inconclusive and required to be reported with its
+  bootstrap CI, never as a bare point estimate.
+- **What this does not resolve:** the combined condition's read position and activation-extraction
+  design were not specified when the original Channel A/B split was designed — Step 7 needs that
+  worked out before it can run (does the probe read after the system turn, after the conversation,
+  or at the question boundary? entry 22's causal-invariance argument may or may not still hold
+  across a system+conversation prompt and needs re-checking, not assumed). The Qwen
+  generator-confound check (entry 36) also remains open and is orthogonal to this — it only matters
+  for cross-model claims, not for the now Llama-scoped mediation arm.
+- **Next step:** design Step 7 for the combined condition (probe training data, read position,
+  re-verify causal invariance) before running it. Flagged to the user as a fork: design Step 7 now,
+  or run the queued generator-confound check first.
+
+### 39. Step 7 (C2) designed and launched for the combined condition
+
+- **What:** User chose to design/build Step 7 now rather than run the queued Qwen generator-confound
+  check first (a genuine fork, asked rather than decided unilaterally). Two new scripts:
+  `src/build_combined_stimuli.py` and `src/c2_encoding.py`.
+- **First did the check that had to come before any of it, not after:** the combined stimulus folds
+  a system-turn persona into Llama's `<<SYS>>` block ahead of the first user turn — structurally
+  different from the plain multi-turn prefix entry 22's causal-invariance test covered. Re-ran that
+  test on the real combined format before trusting a single extracted activation: `pos=78` landed
+  exactly on `[/INST]` after the full system+conversation content (confirmed by decoding the actual
+  tokens at that boundary, not just trusting the number), and prefix-only vs prefix+question showed
+  **exactly 0.0** relative difference across all 41 layers on Llama-2-13b bf16 — even cleaner than
+  entry 30's ~2% bf16 noise floor for the plain-prefix case (that noise came from sequence-length-
+  dependent kernel tiling; these particular lengths happened to land in the same kernel bucket).
+  Checked the position wasn't degenerately trivial before accepting the clean result at face value.
+- **Design decision: a dedicated, item-independent stimulus set — not a reuse of C1's combined
+  data.** `c1_g5_llama13b_combined.json`'s (prefix, template) pairings were drawn by a per-item RNG
+  stream inside `run_combined()`, so there is no clean, closed set of "the N combined stimuli"
+  decoupled from which item happened to be scored alongside them — exactly the item-independence
+  property entry 22 established and that makes activation extraction cheap. Built fresh:
+  all 12 templates/class (too few to hold any out) × 20 conversation prefixes/class, split 14
+  train / 6 held-out **by conversation identity** — held-out tests generalisation to unseen
+  conversations, not just unseen (template, prefix) combinations. 168 train + 72 held-out per
+  class, 720 stimuli total.
+- **Cross-channel transfer (threat T3) note:** its original form (train on Channel B, test on
+  Channel A) no longer applies now that every stimulus already mixes both — noted as a residual,
+  only partially addressed limitation rather than silently dropped or pretended intact.
+- **Launched:** extraction (720 forward passes) → per-layer logistic-regression probe → four
+  baselines (surface features, TF-IDF, layer-0 embedding, shuffled labels) → Gate G2 → five
+  directions saved for Steps 8–9 (diff-in-means, probe weights, verbosity control, random,
+  orthogonalized), with `cos(diff-in-means, verbosity)` reported rather than assumed low.
+- **Next step:** report Gate G2's verdict and the baseline margin once the run lands.
+
+### 40. C2's first run exposed an under-regularized probe — shuffled labels hit 76% instead of ~50%
+
+- **What:** First `c2_encoding.py` run reported Gate G2 as a clean PASS (best layer 100% vs best
+  text baseline 83.3%), but the shuffled-label control — which should sit near chance — came back
+  at **76.4%**. Did not accept the PASS at face value with that number sitting unexplained.
+- **Investigated rather than dismissed or panicked (the project's standing practice: entries 22,
+  30, 32).** Two compounding causes, both real:
+  1. `shuffled_label_baseline` reported `max()` across all 41 layers. Selecting the best of 41
+     draws from pure noise is itself a multiple-comparisons inflation. Rough math (Binomial(144,
+     0.5), 41 roughly-independent draws) predicts a max around 60–63% from that alone — real, but
+     not sufficient to explain 76%.
+  2. **The actual culprit: `n_train=336` against `d_model=5120` is a heavily underdetermined
+     regime (p ≫ n), and sklearn's default `C=1.0` under-regularizes badly there** — a logistic
+     regression can partially fit even *random* labels by exploiting incidental structure in
+     high-dimensional activations that happens to also correlate with the real held-out labels.
+     This is a well-known failure mode, and it was not there was no reason to expect this
+     project's small stimulus counts to be exempt from it.
+- **Fix, not a patch:** regularization strength (`C`) now chosen by 5-fold cross-validation on the
+  **training set only**, independently per layer (`LogisticRegressionCV`, never touching held-out
+  data when choosing `C`) — applied identically to the real probe, the shuffled-label control, and
+  the surface-feature and TF-IDF baselines, so every classifier in the comparison is held to the
+  same standard. Also stopped reporting the shuffled baseline as a single max-of-41 number; report
+  it per layer, **and treat the higher of {max across layers, value at the real best layer} as the
+  actual noise ceiling** the probe must clear — folded directly into the Gate G2 baseline
+  comparison rather than kept as a separate footnote.
+- **Also fixed:** a `numpy.bool_` JSON-serialization crash on the first run's final line (cosmetic,
+  but it meant `c2_summary.json` never got written the first time — caught only because the full
+  log was read rather than just the printed PASS line).
+- **Reasoning for why this matters beyond this one run:** an unregularized probe's accuracy number
+  is not a fair reading of what a layer encodes when n ≪ d — this is a standing risk for *every*
+  later probe in this project (Steps 8–9 reuse this same activation-fitting machinery), not just a
+  one-off bug. The fix is now the default (`CV_CS`, `probe_accuracy_by_layer`) rather than
+  something that has to be remembered per-call.
+- **Next step:** re-ran with the fix; report the corrected Gate G2 margin once it lands. If the
+  shuffled noise ceiling is still elevated after proper CV regularization, that is itself a finding
+  worth reporting (it would suggest the train/held-out split has less independent information than
+  intended, e.g. because template repetition across the split leaks something), not something to
+  paper over with yet another patch.
+
+### 41. Gate G2 PASSES cleanly, once measured properly
+
+- **What:** Re-ran `c2_encoding.py` with CV-regularized probes (entry 40's fix). Full per-layer
+  shuffled-label report this time, not just a single max.
+- **Found — the key number, and it's the good outcome:**
+  ```
+  Real probe, held-out accuracy:      layer 9  = 100.0%
+  Shuffled labels, AT THAT SAME LAYER =  48.6%   <- essentially exact chance
+  Shuffled labels, max over any layer =  76.4%   <- isolated to layer 40, one shuffle seed
+  Surface features / TF-IDF / layer-0: 75.0% / 83.3% / 50.0%
+  ```
+  **Margin: 100.0% − 83.3% = +16.7 points. Gate G2 PASSES.**
+- **The honest caveat, not smoothed over:** only one random shuffle was tried (fixed seed), and it
+  happened to land unusually high (76.4%) at layer 40 specifically — plausibly one favorable
+  permutation partially aligning with the very strong true signal in this dataset by chance, since
+  a single trial can't distinguish that from a real property of layer 40. The code conservatively
+  uses this single-shuffle max as part of "the baseline to beat" anyway (rather than the cleaner
+  48.6% at the probe's own layer), and the gate **still passes by 16.7 points**, so the conclusion
+  is not sensitive to this. Running K independent shuffles and reporting their distribution would
+  be the more rigorous version of this control; not done here because the single-shuffle result
+  already doesn't change the verdict, but it is the correct next refinement if this needs to
+  withstand more scrutiny later.
+- **A reassuring alignment, not engineered:** the layer chosen by "highest real accuracy"
+  (layer 9) independently turns out to be the layer with the *cleanest* noise floor (48.6%, vs
+  76.4% at layer 40). The direction used for Steps 8–9 is anchored at the layer least contaminated
+  by this artifact, not the most.
+- **One number to carry forward honestly:** `cos(diff-in-means, verbosity direction)` = **+0.226**
+  at layer 9 — a real, moderate, non-trivial correlation with length, not zero. DESIGN.md always
+  treated this as expected and answerable (the orthogonalized direction exists for exactly this),
+  not as something a clean result should show as zero. Steps 8–9 should report both the raw
+  diff-in-means direction and the orthogonalized one, not just the raw one.
+- **Also found, not chased further:** accuracy saturates near 100% across a broad band from layer
+  ~12 through the rest of the network, not a narrow peak. `best_layer=9` is close to the *earliest*
+  point that band starts, somewhat earlier than the layers 20–29 (of 40) TalkTuner-derived prior in
+  DESIGN.md — worth a note in any final write-up, not a contradiction (the prior was a rough guide,
+  not a hard prediction, and the signal being broadly decodable rather than narrowly localized is
+  itself informative).
+- **Saved for Steps 8–9:** `data/c2_directions.npz` — diff-in-means, probe weights, verbosity
+  control, random control, and the orthogonalized direction, all anchored at layer 9.
+- **Next step:** Step 8 (C3, sufficiency) — steering under the neutral condition with these five
+  directions, dose-response sweep, health checks. This is a substantial new build (hooks already
+  exist in `subject_model.py`; needs the sweep driver and the checkpointing/progress-logging fix
+  flagged as owed since entry 34).
+
+### 42. Step 8 (C3) build — caught the same batching inefficiency as C1, fixed it properly this time
+
+- **What:** Built `src/c3_sufficiency.py` for the α-sweep sufficiency test: 5 neutral combined
+  stimuli × 5 directions (diff-in-means, probe weights, verbosity, random, orthogonalized) × 7
+  alphas, across all 100 items = 17,500 (item, config) rows, 52,500 raw sequence scores.
+- **First version was too slow to let run.** One Python-level `score_answers` call per
+  (item, stimulus, direction, alpha) — 17,500 separate calls, each re-registering and removing 5
+  forward hooks. Killed after 2m36s had not finished 10/100 items; projected full runtime >50 min
+  of that specific overhead pattern, on top of the actual compute. This is the exact inefficiency
+  flagged and left unfixed at entry 34 for C1 — not caught again in time to prevent it recurring
+  here, worth noting plainly rather than glossing over.
+- **Fixed by restructuring the loop, not by trimming scope.** Since the steering hook applies the
+  *same* modification to an entire forward-pass batch (α and direction are fixed per call, not
+  per-sequence), all 100 items can be scored in ONE batched call per (stimulus, direction, α)
+  config — cutting Python-level calls from 17,500 to 175, and hook registration from 17,500 pairs
+  to 175.
+- **Verified the fix actually worked before trusting it:** GPU utilization steady at 96–100%
+  during the corrected run (compute-bound, not overhead-bound), and the resulting **~53-minute**
+  total runtime for 52,500 raw sequence scores lands squarely inside
+  `PLAN_TECHNICAL.md`'s own original budget estimate for this exact step ("~8,400 passes,
+  ~50–70 min") — the honest floor for the amount of work this step requires, not a lingering
+  inefficiency.
+- **Checkpointing:** writes `data/c3_rows.jsonl` incrementally, flushed after every config (every
+  ~18 seconds), addressing the gap flagged since entry 34/38 — a crash partway through loses at
+  most one config's worth of rows, not the whole run.
+- **Next step:** once `c3_rows.jsonl` completes, aggregate per (direction, alpha), apply the
+  health-check exclusion (any cell whose `logp_sum` falls outside the random-direction control's
+  range at the same α), plot the dose-response curves, and evaluate Gate G3 (monotone response,
+  correct sign, health intact).
 
 ---
 

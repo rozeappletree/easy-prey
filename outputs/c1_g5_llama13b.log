@@ -1,0 +1,54 @@
+persona templates: persona_templates_for_T3_human_augmented_with_neutral.json (credulous=12, neutral=12, skeptical=12)
+prefix pool: credulous  n=137 (need >= 6 per item draw)
+prefix pool: neutral    n=137 (need >= 6 per item draw)
+prefix pool: skeptical  n=137 (need >= 6 per item draw)
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:01<00:03,  1.68s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:03<00:01,  1.61s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:04<00:00,  1.33s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:04<00:00,  1.41s/it]
+Loaded NousResearch/Llama-2-13b-chat-hf | 26.2 GB allocated
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+Behavioural condition: 1800 passes in 5.0 min
+Ceiling condition: 3600 passes in 3.7 min
+Combined condition: 1800 passes in 5.6 min
+
+Ordering check (want skeptical < neutral < credulous):
+  behavioural  skeptical -0.4075 | neutral -0.3861 | credulous -0.4077   [NOT ordered]
+  ceiling      skeptical -0.6868 | neutral -0.6790 | credulous -0.5970   [OK]
+  combined     skeptical -0.3133 | neutral -0.3031 | credulous -0.0416   [OK]
+
+======================================================================
+PRIMARY (P1): behavioural: credulous (n=100) vs skeptical (n=100)
+======================================================================
+  mean credulous: -0.4077 | mean skeptical: -0.4075 | mean paired diff: -0.0002
+  Wilcoxon signed-rank: statistic=2096.0, p=0.1402
+  Cohen's d_z: -0.001  (95% bootstrap CI [-0.182, 0.212])
+  items where credulous > skeptical: 58/100
+
+======================================================================
+CEILING (Channel A, 3-class): credulous (n=100) vs skeptical (n=100)
+======================================================================
+  mean credulous: -0.5970 | mean skeptical: -0.6868 | mean paired diff: +0.0899
+  Wilcoxon signed-rank: statistic=1357.0, p=5.92e-05
+  Cohen's d_z: +0.373  (95% bootstrap CI [0.159, 0.648])
+  items where credulous > skeptical: 66/100
+
+======================================================================
+COMBINED (Channel A + B together) -- Gate G5 diagnostic B: credulous (n=100) vs skeptical (n=100)
+======================================================================
+  mean credulous: -0.0416 | mean skeptical: -0.3133 | mean paired diff: +0.2717
+  Wilcoxon signed-rank: statistic=860.0, p=1.035e-08
+  Cohen's d_z: +0.505  (95% bootstrap CI [0.375, 0.798])
+  items where credulous > skeptical: 78/100
+
+Wrote paired-scatter figure -> /root/easy-prey/outputs/figure1_c1_g5_llama13b_paired_scatter.png
+
+======================================================================
+GATE G1: d_z >= 0.30
+  observed: d_z = -0.001  (95% CI [-0.182, 0.212])
+  RESULT: FAIL on behavioural, but CEILING fires (d_z=0.373) -- Plan B candidate (GATES.md)
+======================================================================
+
+GATE G5: is the total effect big enough for mediation to be worth doing?
+  best single channel: behavioural -0.001 | ceiling +0.373
+  COMBINED d_z = +0.505  (95% CI [0.375, 0.798])
+  RESULT: MARGINAL -- proceed, but PM is preregistered as expected-inconclusive and must be reported with its CI, not as a point estimate.
+======================================================================

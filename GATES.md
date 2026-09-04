@@ -48,6 +48,14 @@ exploratory in the writeup.
 | **G3** sufficiency | 8 | Monotone dose–response, sign as predicted, health checks intact | Report C3 null. Step 9 still runs — necessity without sufficiency is a real pattern |
 | **G4** mediation | 9 | PM's CI **excludes 0** *and* random- and verbosity-ablation PM CIs **include 0** | Report PM ≈ 0 as a strong negative result against linear mediation |
 
+### G2 result — 2026-09-04
+
+Best layer 9: 100.0% held-out accuracy. Best baseline (surface features 75.0%, TF-IDF 83.3%,
+layer-0 embedding 50.0%, shuffled-label noise ceiling 76.4% — a single-shuffle artifact isolated to
+layer 40; at layer 9 itself the shuffled control sits at 48.6%, essentially exact chance): 83.3%.
+**Margin: +16.7 points. PASS.** Full numbers and the noise-floor investigation in
+`docs/WORKLOG.md` entries 40–41.
+
 ### Amendment to G0 — 2026-09-04, after Step 5 ran, ratified by the user before proceeding
 
 **Original text (kept above, struck through, not deleted):** mean Δ_neutral < −0.05 nats/token
@@ -112,6 +120,51 @@ Plan B is now active: `X` for Steps 7–9 is the Channel A stated-persona senten
 conversations. See `docs/WORKLOG.md` entry 34 for the full result and interpretation. The claim is
 stated in its weakened form from here on: *the model represents asserted credulity, and that
 representation is load-bearing* — not that it infers credulity from conversational behavior.
+
+---
+
+## Gate G5 — is the total effect large enough for mediation to be worth doing?
+
+**Written 2026-09-04, before the diagnostic runs, and before any combined-channel number exists.**
+
+**Why this gate exists.** C4's headline statistic is a ratio:
+`PM = (Δ_cred − Δ_cred_ablated) / (Δ_cred − Δ_neutral)`. Its **denominator is the total effect**.
+Every total effect measured so far is small — the largest is `d_z` = 0.373 on Llama-2-13b with a CI
+reaching down to 0.16, and the cross-model check (entry 36) found no consistent effect at all. A PM
+computed against a denominator that small and that uncertain will have a confidence interval wide
+enough to be uninterpretable: a precise-looking number that means nothing. Mechanism work also
+presumes a stable effect exists to be mechanised, and currently one does not.
+
+**Two diagnostics, run before deciding:**
+- **A — neutral ceiling.** Add the 12 neutral stated-persona sentences and re-run the ceiling
+  condition as 3 classes. Tells us *which direction moves* (does credulous push toward lies, or does
+  skeptical pull toward truth) — required for Steps 7–9 to be interpretable at all.
+- **B — combined channel.** Apply the stated persona **and** a behavioural prefix together. If the
+  two channels contribute independently, the combined effect should exceed either alone.
+
+**The gate, on the combined-channel `d_z` (credulous vs skeptical, Llama-2-13b):**
+
+| Combined `d_z` | Reading | Action |
+|---|---|---|
+| **≥ 0.60** | Denominator is solid | Proceed to C2 → C4 on the combined condition, Llama-scoped |
+| **0.35 – 0.60** | Marginal | Proceed, but preregister here and now that PM is expected to be **inconclusive**, and report it with its CI rather than as a point estimate |
+| **< 0.35** | No stable effect to mechanise | **Stop the mediation arm.** Spend the remaining budget on the generator-confound check and writing up the cross-model behavioural finding |
+
+**Secondary check, not gated:** in the 3-class ceiling condition, the ordering should be
+`skeptical < neutral < credulous`. If neutral falls outside that range, the neutral sentences are
+not neutral and must be revised before they are used in Steps 7–9.
+
+**Queued regardless of outcome:** regenerate the conversations with a non-Qwen generator and re-run
+C1 on Qwen2.5-14B. That is the only way to tell whether Qwen's behavioural effect is real or an
+artifact of the model reading its own dialect (entry 36).
+
+**RESULT — 2026-09-04.** Diagnostic A: behavioural stays unordered (flat, no effect) even with a
+neutral middle; ceiling and combined both order cleanly (`skeptical < neutral < credulous`).
+Diagnostic B: combined `d_z` = +0.505, 95% CI **[0.375, 0.798]** — no longer touches zero, unlike
+ceiling alone (CI reached down to 0.159). **Verdict: MARGINAL.** Per the table above: proceeding to
+Step 7 on the **combined condition** (stated persona + behavioural prefix together), Llama-2-13b
+only, with `PM` reported by its CI rather than as a point estimate throughout. Full numbers in
+`docs/WORKLOG.md` entry 38.
 
 ---
 

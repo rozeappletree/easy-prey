@@ -1,0 +1,56 @@
+Using 5 fixed neutral stimuli: ['neutral_neutral_047_t09', 'neutral_neutral_128_t00', 'neutral_neutral_036_t09', 'neutral_neutral_245_t03', 'neutral_neutral_082_t07']
+Direction anchored at hidden_states[9] -> steering block outputs [6, 7, 8, 9, 10]
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:01<00:03,  1.67s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:03<00:01,  1.59s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:04<00:00,  1.31s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:04<00:00,  1.39s/it]
+Loaded NousResearch/Llama-2-13b-chat-hf | 26.2 GB allocated
+
+Plan: 5 stimuli x 5 directions x 7 alphas = 175 configs, each scoring all 100 items batched together (17500 rows total)
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+  config 1/175 (diff_in_means, alpha=-4) | 100 rows so far | ETA 53.5 min
+  config 2/175 (diff_in_means, alpha=-2) | 200 rows so far | ETA 53.5 min
+  config 3/175 (diff_in_means, alpha=-1) | 300 rows so far | ETA 53.8 min
+  config 4/175 (diff_in_means, alpha=+0) | 400 rows so far | ETA 53.3 min
+  config 5/175 (diff_in_means, alpha=+1) | 500 rows so far | ETA 52.6 min
+  config 6/175 (diff_in_means, alpha=+2) | 600 rows so far | ETA 52.1 min
+  config 7/175 (diff_in_means, alpha=+4) | 700 rows so far | ETA 51.6 min
+  config 8/175 (probe_weights, alpha=-4) | 800 rows so far | ETA 51.2 min
+  config 9/175 (probe_weights, alpha=-2) | 900 rows so far | ETA 50.9 min
+  config 10/175 (probe_weights, alpha=-1) | 1000 rows so far | ETA 50.6 min
+  config 11/175 (probe_weights, alpha=+0) | 1100 rows so far | ETA 50.4 min
+  config 12/175 (probe_weights, alpha=+1) | 1200 rows so far | ETA 50.2 min
+  config 13/175 (probe_weights, alpha=+2) | 1300 rows so far | ETA 50.0 min
+  config 14/175 (probe_weights, alpha=+4) | 1400 rows so far | ETA 49.8 min
+  config 15/175 (verbosity, alpha=-4) | 1500 rows so far | ETA 49.6 min
+  config 16/175 (verbosity, alpha=-2) | 1600 rows so far | ETA 49.4 min
+  config 17/175 (verbosity, alpha=-1) | 1700 rows so far | ETA 49.1 min
+  config 18/175 (verbosity, alpha=+0) | 1800 rows so far | ETA 48.8 min
+  config 19/175 (verbosity, alpha=+1) | 1900 rows so far | ETA 48.6 min
+  config 20/175 (verbosity, alpha=+2) | 2000 rows so far | ETA 48.3 min
+  config 21/175 (verbosity, alpha=+4) | 2100 rows so far | ETA 48.0 min
+  config 22/175 (random, alpha=-4) | 2200 rows so far | ETA 47.7 min
+  config 23/175 (random, alpha=-2) | 2300 rows so far | ETA 47.4 min
+  config 24/175 (random, alpha=-1) | 2400 rows so far | ETA 47.2 min
+  config 25/175 (random, alpha=+0) | 2500 rows so far | ETA 46.9 min
+  config 26/175 (random, alpha=+1) | 2600 rows so far | ETA 46.6 min
+  config 27/175 (random, alpha=+2) | 2700 rows so far | ETA 46.2 min
+  config 28/175 (random, alpha=+4) | 2800 rows so far | ETA 45.9 min
+  config 29/175 (orthogonalized, alpha=-4) | 2900 rows so far | ETA 45.6 min
+  config 30/175 (orthogonalized, alpha=-2) | 3000 rows so far | ETA 45.2 min
+  config 31/175 (orthogonalized, alpha=-1) | 3100 rows so far | ETA 45.0 min
+  config 32/175 (orthogonalized, alpha=+0) | 3200 rows so far | ETA 44.7 min
+  config 33/175 (orthogonalized, alpha=+1) | 3300 rows so far | ETA 44.3 min
+  config 34/175 (orthogonalized, alpha=+2) | 3400 rows so far | ETA 43.9 min
+  config 35/175 (orthogonalized, alpha=+4) | 3500 rows so far | ETA 43.6 min
+  config 36/175 (diff_in_means, alpha=-4) | 3600 rows so far | ETA 43.3 min
+  config 37/175 (diff_in_means, alpha=-2) | 3700 rows so far | ETA 43.1 min
+  config 38/175 (diff_in_means, alpha=-1) | 3800 rows so far | ETA 42.8 min
+  config 39/175 (diff_in_means, alpha=+0) | 3900 rows so far | ETA 42.6 min
+  config 40/175 (diff_in_means, alpha=+1) | 4000 rows so far | ETA 42.3 min
+  config 41/175 (diff_in_means, alpha=+2) | 4100 rows so far | ETA 42.1 min
+  config 42/175 (diff_in_means, alpha=+4) | 4200 rows so far | ETA 41.9 min
+  config 43/175 (probe_weights, alpha=-4) | 4300 rows so far | ETA 41.6 min
+  config 44/175 (probe_weights, alpha=-2) | 4400 rows so far | ETA 41.4 min
+  config 45/175 (probe_weights, alpha=-1) | 4500 rows so far | ETA 41.1 min
+  config 46/175 (probe_weights, alpha=+0) | 4600 rows so far | ETA 40.9 min
+  config 47/175 (probe_weights, alpha=+1) | 4700 rows so far | ETA 40.6 min
+  config 48/175 (probe_weights, alpha=+2) | 4800 rows so far | ETA 40.3 min
