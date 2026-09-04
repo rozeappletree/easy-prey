@@ -4,6 +4,10 @@ A running record of **what was done, why, how, what it showed, what followed fro
 happens next.** Chronological. Each entry is self-contained so you can cite it in the writeup's
 methods section without reconstructing the reasoning six days later.
 
+**Start here if you are new to the project:** [`../nb/README.md`](../nb/README.md) — three
+notebooks that tell the whole story as a narrative with figures. This log is the chronological
+record behind them.
+
 **Companion documents:** [`../DESIGN.md`](../DESIGN.md) (the reasoned design),
 [`PLAN_ELI5.md`](PLAN_ELI5.md) and [`PLAN_TECHNICAL.md`](PLAN_TECHNICAL.md) (the execution steps),
 [`../GATES.md`](../GATES.md) (the preregistration).
@@ -864,6 +868,35 @@ obvious at a glance.
   test loses its original purpose (there is no longer a second, independent channel to transfer
   *to* — Channel A **is** the primary channel now) and should be reframed or dropped; note this
   explicitly rather than silently running a test that no longer means what it used to.
+
+### 35. Wrote the narrative notebooks — and found two of my own errors doing it
+
+- **What:** Three executed notebooks in `nb/`, covering the whole study: the claim and design, the
+  materials and their QC, and the results with limitations. 13 figures, all statistics recomputed
+  live from saved data rather than pasted, so the narrative cannot silently drift from the files.
+- **Why in this form:** this log is chronological, which is the wrong shape for understanding an
+  argument. The notebooks follow the *argument* — claim → what would count as evidence → what the
+  evidence shows → what it does not license — and cite this log by entry number for the detail they
+  skip. Data generation is deliberately **not** reproduced in them; it is a GPU process, described
+  and linked instead, with its preserved console output.
+- **Two errors caught while writing, both mine:**
+  1. **A misleading figure.** The C1 paired scatters were drawn on independently-scaled axes
+     (−4..+4 vs −12.5..+5), which visually exaggerated the ceiling effect relative to the
+     behavioural null. Fixed to shared axes.
+  2. **An overclaim in the prose.** The text said the ceiling condition's points visibly "lift off
+     the diagonal." On shared axes they barely do — `d_z` = 0.37 is simply not visible in a
+     scatter plot. Rewritten to say so explicitly, and to point at the bootstrap-CI panel as the
+     actual evidence, with the scatter demoted to its real job: ruling out outlier-driven artefacts.
+- **Reasoning:** both errors flattered the result. That is the direction errors tend to run in when
+  you are writing up your own work, which is the argument for building figures that are *comparable
+  by construction* (shared axes) rather than relying on a caption to warn the reader.
+- **A gap surfaced by writing the limitations section:** the single highest-value unrun experiment
+  is re-running C1 across two more models — ~25 minutes, both already downloaded — which would turn
+  a one-model null into a cross-family null. It was not run because the plan sequenced replication
+  after the mediation chain. Given the null, that ordering was wrong.
+- **Next step:** the priority list at the end of notebook 03 — neutral Channel A sentences first
+  (without them Steps 7-9 cannot say which direction moves), then multi-model C1, then the Step 7
+  probe redesign forced by Channel A's small sample.
 
 ---
 
