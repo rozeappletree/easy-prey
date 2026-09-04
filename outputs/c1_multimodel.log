@@ -1,0 +1,20 @@
+==================================================================
+Multi-model C1 replication started: 2026-09-04 15:30:23 UTC
+Models, in order: llama13b qwen7b qwen14b
+==================================================================
+
+### [llama13b] NousResearch/Llama-2-13b-chat-hf -- starting 15:30:23 UTC
+### [llama13b] done 15:37:59 UTC -- behavioural d_z = -0.001
+
+### [qwen7b] Qwen/Qwen2.5-7B-Instruct -- starting 15:37:59 UTC
+### [qwen7b] done 15:42:21 UTC -- behavioural d_z = 0.190
+
+### [qwen14b] Qwen/Qwen2.5-14B-Instruct -- starting 15:42:21 UTC
+### [qwen14b] done 15:52:11 UTC -- behavioural d_z = 0.259
+
+ALL MODELS DONE: 2026-09-04 15:52:11 UTC
+Summary:
+  llama13b: behavioural d_z=-0.001 [-0.182,0.212]  ceiling d_z=+0.373 [0.159,0.648]
+  qwen7b: behavioural d_z=+0.190 [0.000,0.364]  ceiling d_z=-0.112 [-0.317,0.083]
+  qwen14b: behavioural d_z=+0.259 [0.067,0.464]  ceiling d_z=-0.019 [-0.245,0.166]
+Full log: /root/easy-prey/outputs/c1_multimodel.log

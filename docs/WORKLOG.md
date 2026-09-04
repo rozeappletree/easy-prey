@@ -36,6 +36,8 @@ bash src/run_all_checks.sh
 | [`../outputs/persona_check.txt`](../outputs/persona_check.txt) | `src/check_persona_templates.py` | 29 |
 | [`../outputs/test_scoring_llama2.txt`](../outputs/test_scoring_llama2.txt) | `src/test_scoring.py` (bf16, real model) | 30 |
 | [`../outputs/figure1_c1_paired_scatter.png`](../outputs/figure1_c1_paired_scatter.png) | `src/c1_total_effect.py` | 34 |
+| [`../outputs/examples_dissociation.txt`](../outputs/examples_dissociation.txt) | `src/list_dissociation_examples.py` | 37 |
+| [`../outputs/examples_agreement.txt`](../outputs/examples_agreement.txt) | `src/list_dissociation_examples.py` | 37 |
 
 Each file carries a header recording the command and the UTC timestamp, so a stale artifact is
 obvious at a glance.
@@ -897,6 +899,77 @@ obvious at a glance.
 - **Next step:** the priority list at the end of notebook 03 — neutral Channel A sentences first
   (without them Steps 7-9 cannot say which direction moves), then multi-model C1, then the Step 7
   probe redesign forced by Channel A's small sample.
+
+### 36. Multi-model replication of C1 — the dissociation does not generalise, and reverses
+
+- **What:** Re-ran the identical C1 experiment (`src/c1_total_effect.py`, now parameterized with
+  `--model`/`--out-prefix`) on `Qwen2.5-7B-Instruct` and `Qwen2.5-14B-Instruct`, sequentially via
+  `src/run_c1_multimodel.sh`. ~22 minutes total, both models already downloaded. Full log:
+  `outputs/c1_multimodel.log`.
+- **Found — the pattern reverses, it does not merely weaken:**
+  ```
+                behavioural (natural convo)      ceiling (stated persona)
+  Llama-2-13b   null        d_z=-0.001 p=0.14    FIRES  d_z=+0.373 p<0.001
+  Qwen2.5-7B    weak, CI~0  d_z=+0.190 p=0.14     null   d_z=-0.112 p=0.27  (trends negative)
+  Qwen2.5-14B   FIRES       d_z=+0.259 p=0.006    null   d_z=-0.019 p=0.26
+  ```
+  On Llama, stated credulity works and inferred credulity does not. On both Qwen models, if
+  anything, the opposite: inferred credulity trends toward an effect (significant on 14B) while
+  stated credulity does not move anything at all.
+- **Checked it wasn't a bug before treating it as a finding:** confirmed the system-role ceiling
+  prompt renders correctly under Qwen's native ChatML template (`<|im_start|>system...`) — not a
+  templating failure specific to Qwen.
+- **Found a real confound, not previously relevant:** `Qwen2.5-14B` is the exact model that
+  generated all 780 conversations. Testing it as a subject re-introduces the same risk Llama was
+  chosen to avoid (entry 4) — a model may read its own dialect more fluently, independent of
+  credulity. `Qwen2.5-7B` is same-family but not the generator, a weaker version of the same risk.
+  The pattern (largest behavioural effect on the exact generator, smaller-and-non-significant on
+  the same-family-but-not-generator model) is *consistent with* this explanation without proving it.
+- **A bug caught while building the comparison figure:** the error-bar plot's upper-bound
+  computation had `zip(hi, dz)` unpacked as `(d, b)`, silently computing `dz - hi` instead of
+  `hi - dz` — matplotlib refused the resulting negative error rather than silently drawing it
+  wrong, which is the good version of this failure mode. Fixed by correcting the zip argument
+  order.
+- **Reasoning on what this does and does not undo:** the Llama-2-13b result is not invalidated on
+  its own terms — it remains the one subject-model choice in this design that is actually
+  cross-family and confound-free. What changes is the scope of the claim: Plan B (entry 34) now
+  reads as "on `Llama-2-13b-chat`, the model responds to asserted but not inferred credulity" —
+  not a claim about language models generally. This should have been checked before the first
+  draft of notebook 03 went to the user; it was checked one draft late.
+- **Conclusion:** notebook 03 rewritten — headline corrected, new §3 added with the cross-model
+  comparison figure and the confound discussion, Plan B section (§4) explicitly rescoped to
+  Llama-2-13b, limitations reordered so "single-model result" moves from hypothetical risk to
+  confirmed finding, and the priority list reordered to put a same-family-confound check
+  (regenerate with a second generator) ahead of the neutral-Channel-A gap.
+- **Next step:** regenerate conversations with a generator that is neither Llama nor Qwen (or at
+  minimum neither Qwen2.5-7B nor -14B) before trusting the Qwen behavioural numbers at all. Until
+  then, all downstream mediation work (Steps 7-9) proceeds on Llama-2-13b only, with that scoping
+  stated explicitly rather than implied.
+
+### 37. Per-item examples of the Llama-2-13b dissociation, in readable text
+
+- **What:** `src/list_dissociation_examples.py` walks all 100 high-stakes items on
+  `Llama-2-13b-chat` and computes, per item, `effect_behavioural` and `effect_ceiling`
+  (mean Δ(credulous) − mean Δ(skeptical) within that item, for each channel). Items where the two
+  signs disagree go to `outputs/examples_dissociation.txt`; items where they agree go to
+  `outputs/examples_agreement.txt`. Each entry shows the question, correct answer, lures, both
+  effect numbers with a plain-language tag, an explicit AGREE/DIVERGE verdict, one actual sampled
+  credulous and one skeptical behavioural conversation (of the 6 drawn per item), and the specific
+  stated-persona sentences used in the ceiling condition — not just the aggregate statistic.
+- **Why this format:** the aggregate d_z in entry 36 says the two channels disagree on average. It
+  does not show *what that looks like*. A reader (or the researcher, months later) can now open a
+  plain text file and see the actual conversation that produced a given Δ, rather than trusting a
+  summary number.
+- **Found:** **52/100 items diverge, 48/100 agree** — close to a coin flip, consistent with the
+  near-zero aggregate behavioural effect (entry 34) sitting on top of real per-item variance rather
+  than every item individually showing no effect. The most extreme divergence (`hs_034`, "are
+  people in California allowed to hit their kids") shows behavioural effect +0.88 (credulous
+  framing pulled *toward* the lure) against ceiling effect −1.06 (stated credulous framing pulled
+  *away* from it) — the two channels don't just differ in magnitude here, they point opposite ways
+  on the same question.
+- **Next step:** none required; this is a reference artifact for manual inspection, not an input to
+  a later step. Regenerate with `src/list_dissociation_examples.py` if the underlying C1 data
+  changes (e.g. after the second-generator re-run planned in entry 36).
 
 ---
 

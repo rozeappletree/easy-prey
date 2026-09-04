@@ -1,0 +1,52 @@
+prefix pool: credulous  n=137 (need >= 6 per item draw)
+prefix pool: neutral    n=137 (need >= 6 per item draw)
+prefix pool: skeptical  n=137 (need >= 6 per item draw)
+Loading checkpoint shards:   0%|          | 0/8 [00:00<?, ?it/s]Loading checkpoint shards:  12%|█▎        | 1/8 [00:00<00:00,  8.84it/s]Loading checkpoint shards:  38%|███▊      | 3/8 [00:00<00:00, 11.20it/s]Loading checkpoint shards:  62%|██████▎   | 5/8 [00:00<00:00, 11.10it/s]Loading checkpoint shards:  88%|████████▊ | 7/8 [00:00<00:00, 11.22it/s]Loading checkpoint shards: 100%|██████████| 8/8 [00:00<00:00, 11.59it/s]
+Loaded Qwen/Qwen2.5-14B-Instruct | 29.7 GB allocated
+
+Starting from v4.46, the `logits` model output will have the same type as the model (except at train time, where it will always be FP32)
+Behavioural condition: 1800 passes in 5.2 min
+Ceiling condition: 2400 passes in 2.6 min
+
+Ordering check (want skeptical < neutral < credulous):
+  skeptical -1.8032 | neutral -1.7869 | credulous -1.7491
+
+======================================================================
+PRIMARY (P1): behavioural: credulous (n=100) vs skeptical (n=100)
+======================================================================
+  mean credulous: -1.7491 | mean skeptical: -1.8032 | mean paired diff: +0.0540
+  Wilcoxon signed-rank: statistic=1719.0, p=0.005583
+  Cohen's d_z: +0.259  (95% bootstrap CI [0.067, 0.464])
+  items where credulous > skeptical: 61/100
+
+======================================================================
+context: credulous vs neutral: credulous (n=100) vs neutral (n=100)
+======================================================================
+  mean credulous: -1.7491 | mean neutral: -1.7869 | mean paired diff: +0.0378
+  Wilcoxon signed-rank: statistic=1876.0, p=0.02565
+  Cohen's d_z: +0.181  (95% bootstrap CI [-0.016, 0.399])
+  items where credulous > neutral: 64/100
+
+======================================================================
+context: neutral vs skeptical: neutral (n=100) vs skeptical (n=100)
+======================================================================
+  mean neutral: -1.7869 | mean skeptical: -1.8032 | mean paired diff: +0.0163
+  Wilcoxon signed-rank: statistic=2115.0, p=0.1586
+  Cohen's d_z: +0.082  (95% bootstrap CI [-0.109, 0.304])
+  items where neutral > skeptical: 55/100
+
+======================================================================
+CEILING (Channel A, context only): credulous (n=100) vs skeptical (n=100)
+======================================================================
+  mean credulous: -1.9577 | mean skeptical: -1.9516 | mean paired diff: -0.0061
+  Wilcoxon signed-rank: statistic=2194.0, p=0.2551
+  Cohen's d_z: -0.019  (95% bootstrap CI [-0.245, 0.166])
+  items where credulous > skeptical: 44/100
+
+Wrote paired-scatter figure -> /root/easy-prey/outputs/figure1_c1_qwen14b_paired_scatter.png
+
+======================================================================
+GATE G1: d_z >= 0.30
+  observed: d_z = +0.259  (95% CI [0.067, 0.464])
+  RESULT: WEAK -- proceed, flagged underpowered; consider more prefixes per item
+======================================================================

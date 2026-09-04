@@ -157,6 +157,12 @@ def plot_paired_scatter(agg, out_path):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=SUBJECT_MODEL)
+    ap.add_argument("--out-prefix", default="c1", help="output files: <prefix>_behavioural.json etc.")
+    args = ap.parse_args()
+
     random.seed(SEED)
     rng = random.Random(SEED)
 
@@ -169,8 +175,8 @@ def main():
     for label, pool in prefixes_by_label.items():
         print("prefix pool: %-10s n=%d (need >= %d per item draw)" % (label, len(pool), N_PREFIXES_PER_ITEM))
 
-    model, tok = load_subject(SUBJECT_MODEL, dtype=torch.bfloat16, device="cuda")
-    print("Loaded %s | %.1f GB allocated\n" % (SUBJECT_MODEL, torch.cuda.memory_allocated() / 1e9))
+    model, tok = load_subject(args.model, dtype=torch.bfloat16, device="cuda")
+    print("Loaded %s | %.1f GB allocated\n" % (args.model, torch.cuda.memory_allocated() / 1e9))
 
     import time
     t0 = time.time()
@@ -181,8 +187,8 @@ def main():
     ceiling_rows = run_ceiling(items, templates, model, tok)
     print("Ceiling condition: %d passes in %.1f min\n" % (len(ceiling_rows), (time.time() - t0) / 60))
 
-    json.dump(behav_rows, open(REPO_ROOT / "data" / "c1_behavioural.json", "w"), indent=2)
-    json.dump(ceiling_rows, open(REPO_ROOT / "data" / "c1_ceiling.json", "w"), indent=2)
+    json.dump(behav_rows, open(REPO_ROOT / "data" / ("%s_behavioural.json" % args.out_prefix), "w"), indent=2)
+    json.dump(ceiling_rows, open(REPO_ROOT / "data" / ("%s_ceiling.json" % args.out_prefix), "w"), indent=2)
 
     behav_agg = aggregate_per_item(behav_rows, ["credulous", "neutral", "skeptical"])
     ceiling_agg = aggregate_per_item(ceiling_rows, ["credulous", "skeptical"])
@@ -201,7 +207,7 @@ def main():
     print()
     ceiling = primary_contrast(ceiling_agg, "credulous", "skeptical", "CEILING (Channel A, context only)")
 
-    plot_paired_scatter(behav_agg, REPO_ROOT / "outputs" / "figure1_c1_paired_scatter.png")
+    plot_paired_scatter(behav_agg, REPO_ROOT / "outputs" / ("figure1_%s_paired_scatter.png" % args.out_prefix))
 
     d_z = primary["d_z"]
     print("\n" + "=" * 70)
@@ -218,8 +224,8 @@ def main():
     print("  RESULT: %s" % verdict)
     print("=" * 70)
 
-    json.dump({"behavioural": primary, "ceiling": ceiling, "means_by_class": means},
-              open(REPO_ROOT / "data" / "c1_summary.json", "w"), indent=2)
+    json.dump({"model": args.model, "behavioural": primary, "ceiling": ceiling, "means_by_class": means},
+              open(REPO_ROOT / "data" / ("%s_summary.json" % args.out_prefix), "w"), indent=2)
 
 
 if __name__ == "__main__":

@@ -24,17 +24,22 @@ loads that JSON and does the statistics and figures.
 
 ## The headline, if you read nothing else
 
-> A conversation in which the user *behaves* credulously produces **no measurable shift** in how
-> truthfully `Llama-2-13b-chat` answers a subsequent unrelated question (`d_z` = −0.001, 95% CI
-> [−0.182, +0.212], n = 100 items).
+> On **`Llama-2-13b-chat`**: a conversation in which the user *behaves* credulously produces **no
+> measurable shift** in truthfulness (`d_z` = −0.001, CI [−0.182, +0.212]), while **explicitly
+> stating** the user is credulous **does** (`d_z` = +0.373, CI [0.159, 0.648], p < 0.001).
 >
-> **Explicitly telling** the model the user is credulous **does** shift it (`d_z` = +0.373, 95% CI
-> [0.159, 0.648], p = 5.9 × 10⁻⁵).
+> **This does not generalise.** The same experiment on `Qwen2.5-7B` and `Qwen2.5-14B` shows the
+> opposite tendency — behavioural effects present (significant on 14B), stated-persona effects null
+> to negative. One of those two models is also the exact generator of every conversation tested,
+> which is a real, unresolved confound. Full comparison in notebook 03 §3.
 >
-> The model responds to **asserted** credulity, not **inferred** credulity.
+> **The defensible finding right now:** the two ways of conveying credulity do not behave the same
+> way in *any* model tested — but *which* one works is not consistent across models, and the
+> Llama-2-13b dissociation should not be read as a general property of language models.
 
 The mediation claim the project set out to test (is there an internal credulity direction, and is it
-load-bearing?) is **not yet answered** — steps C2, C3 and C4 have not run.
+load-bearing?) is **not yet answered** — steps C2, C3 and C4 have not run, and are now scoped to
+`Llama-2-13b-chat` specifically rather than to "the model" in general.
 
 ## Re-running them
 
