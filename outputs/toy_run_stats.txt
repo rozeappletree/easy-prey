@@ -1,0 +1,57 @@
+# toy_run_stats.txt
+# command: /opt/conda/envs/talktuner-gpu/bin/python src/toy_run_stats.py
+# generated: 2026-09-04 10:16:23 UTC
+# regenerate: bash src/run_all_checks.sh
+
+==============================================================================
+1. Generation throughput (the finding that reshaped the plan)
+==============================================================================
+  generator        Qwen/Qwen2.5-32B-Instruct, 4-bit NF4, batch 4
+  VRAM allocated   19.33 GB
+  wall clock       89.7 min for 80 conversations
+  rate             0.89 conversations/min  (1.1 min each)
+  throughput       ~4.3 aggregate tokens/s
+  usable           30/80 (37.5%) under the toy rule of exactly 12 turns
+  effective cost   3.0 min per USABLE conversation
+
+  Extrapolation: 480 conversations at this rate = 9.0 hours of a 20-hour budget.
+  Conclusion: switch the generator to bf16 and raise the batch size. NF4 dequantization
+  dominates decode, and batch 4 left ~18 GB of VRAM idle. See WORKLOG.md entry 6.
+
+==============================================================================
+2. Why the yield was low: early stopping, not truncation
+==============================================================================
+  turn-count distribution (target 12 = 6 exchanges):
+     8 turns    3 convos
+     9 turns    5 convos
+    10 turns   40 convos   <- mode
+    11 turns    2 convos
+    12 turns   30 convos
+
+  malformed ending on clean punctuation  47/50 (94%)
+  mean words   malformed 202  |  well-formed 251  (20% shorter)
+
+  A truncated generation stops mid-sentence. These stop cleanly, only slightly short,
+  with a mode of 5 exchanges instead of 6 -- the model decided it was finished.
+  So max_new_tokens was never the lever. See WORKLOG.md entry 9.
+
+==============================================================================
+3. Item-bank skew under random sampling (why v2 uses quotas)
+==============================================================================
+  toy item bank, 30 items sampled at random:
+    Misconceptions            11
+    Law                       11
+    Health                     5
+    Nutrition                  2   <- unusable as a category
+    Finance                    1   <- unusable as a category
+
+  v2 item bank, 100 items under fixed quotas:
+    Misconceptions            25
+    Law                       25
+    Health                    25
+    Economics                 10
+    Nutrition                 10
+    Finance                    5
+
+  See WORKLOG.md entries 10 and 15.
+

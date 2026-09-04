@@ -130,10 +130,11 @@ it cannot bias the persona. Matching stays as the backstop; this makes it cheap.
 
 **Throughput checkpoint — do not skip.** Generate 48, measure the rate, extrapolate. If the
 projection exceeds 90 minutes for the full set, cut to 100/class and continue.
-*Justification:* your measured toy rate was **80 conversations in 89.7 minutes** (≈8.9 aggregate
-tok/s) with 32B-NF4 at batch 4. NF4 dequantization dominates decode; bf16 weights hit the tensor
-cores directly, and batch 4 is far below what 18 GB of free VRAM allows. Unfixed, this stage alone
-would consume 6–8 of your 20 hours.
+*Justification:* your measured toy rate was **80 conversations in 89.7 minutes** with 32B-NF4 at
+batch 4 — 1.1 min each, **3.0 min per usable conversation**, ~4.3 aggregate tok/s estimated from the
+generated text (`outputs/toy_run_stats.txt`). NF4 dequantization dominates decode; bf16 weights hit
+the tensor cores directly, and batch 4 is far below what 18 GB of free VRAM allows. Unfixed, this
+stage alone would consume **about 9 of your 20 hours**.
 
 ## Step 3 — Stated-persona prompts (Channel A)
 **Parallel with Step 2 · no GPU · ~20 min**

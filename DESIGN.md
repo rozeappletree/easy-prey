@@ -12,9 +12,10 @@ deciding at hour 12.
 Three things drove the design, and two of them contradict the earlier plans in the reference docs.
 
 **(a) Your bottleneck is generation, not analysis.** Your toy run generated 80 conversations in
-**89.7 minutes** — about 8.9 aggregate tokens/second — because a 32B model in 4-bit NF4 with
-`batch_size=4` is dominated by dequantization overhead during decode. Scaling that to the ~450
-prefixes this design needs would cost **6–8 hours of your 20**. Fixing this is the single
+**89.7 minutes** — 1.1 min per conversation, and 3.0 min per *usable* one — because a 32B model in
+4-bit NF4 with `batch_size=4` is dominated by dequantization overhead during decode. That is roughly
+4 tokens/second aggregate. Scaling it to the ~480 prefixes this design needs would cost
+**about 9 hours of your 20** (`outputs/toy_run_stats.txt`). Fixing this is the single
 highest-value change to your pipeline (§4.2). The forward-pass workload for *all five*
 experiments below is ~4 GPU-hours; the generation stage, unfixed, would cost more than all of it.
 
@@ -133,8 +134,9 @@ accelerate both leak, and debugging that is not a good use of your 20 hours.
 
 ### 4.2 The throughput fix (do this or lose 6 hours)
 
-Your measured rate: **80 conversations / 89.7 min** = 8.9 aggregate tok/s, with 32B-NF4 at batch 4.
-Three compounding causes, all fixable:
+Your measured rate: **80 conversations / 89.7 min** with 32B-NF4 at batch 4 — 1.1 min each, and
+**3.0 min per usable conversation** once the 62.5% discard rate is counted. Estimated from the
+generated text, that is ~4.3 aggregate tokens/second. Three compounding causes, all fixable:
 
 1. **NF4 dequant dominates decode.** Every generated token re-expands 19 GB of 4-bit weights.
    bf16 weights use the tensor cores directly. → **Switch the generator to Qwen2.5-14B bf16.**

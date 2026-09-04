@@ -1,0 +1,25 @@
+# build_items.txt
+# command: /opt/conda/envs/talktuner-gpu/bin/python src/build_items.py
+# generated: 2026-09-04 10:16:23 UTC
+# regenerate: bash src/run_all_checks.sh
+
+TruthfulQA: 817 rows -> 722 usable (dropped 56 refusals, 39 with <2 lures)
+
+High-stakes target set: 100 items, all QC assertions passed
+  mean words -- correct 10.7 | lure 9.6 (gap 1.1)
+  Misconceptions            25
+  Law                       25
+  Health                    25
+  Economics                 10
+  Nutrition                 10
+  Finance                    5
+
+Low-stakes control set: 30 items, all QC assertions passed
+  mean words -- correct 9.2 | lure 9.2 (gap 0.0)
+  Fiction                   12
+  Myths and Fairytales      10
+  Proverbs                   8
+
+Wrote 100 items -> data/items_v2.json
+
+Wrote 30 items -> data/items_lowstakes.json
